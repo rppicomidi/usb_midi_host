@@ -196,6 +196,8 @@ bool midih_xfer_cb(uint8_t dev_addr, uint8_t ep_addr, xfer_result_t result, uint
     {
       tuh_midi_rx_cb(dev_addr, packets_queued);
     }
+    TU_LOG2("Requesting poll IN endpoint %d\r\n", p_midi_host->ep_in);
+    TU_ASSERT(usbh_edpt_xfer(p_midi_host->dev_addr, p_midi_host->ep_in, p_midi_host->epin_buf, p_midi_host->ep_in_max), 0);
   }
   else if ( ep_addr == p_midi_host->ep_out )
   {
@@ -485,6 +487,9 @@ bool midih_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const *d
   }
   p_midi_host->dev_addr = dev_addr;
 
+  TU_LOG2("Requesting poll IN endpoint %d\r\n", p_midi_host->ep_in);
+  TU_ASSERT(usbh_edpt_xfer(p_midi_host->dev_addr, p_midi_host->ep_in, p_midi_host->epin_buf, p_midi_host->ep_in_max), 0);
+
   if (tuh_midi_mount_cb)
   {
     tuh_midi_mount_cb(dev_addr, p_midi_host->ep_in, p_midi_host->ep_out, p_midi_host->num_cables_rx, p_midi_host->num_cables_tx);
@@ -534,30 +539,6 @@ static uint32_t write_flush(uint8_t dev_addr, midih_interface_t* midi)
     usbh_edpt_release(dev_addr, midi->ep_out);
     return 0;
   }
-}
-
-bool tuh_midi_read_poll( uint8_t dev_addr )
-{
-  midih_interface_t *p_midi_host = get_midi_host(dev_addr);
-  TU_VERIFY(p_midi_host != NULL);
-  bool result = false;
-
-  bool in_edpt_not_busy = !usbh_edpt_busy(dev_addr, p_midi_host->ep_in);
-  if (in_edpt_not_busy)
-  {
-    TU_LOG2("Requesting poll IN endpoint %d\r\n", p_midi_host->ep_in);
-    TU_ASSERT(usbh_edpt_xfer(p_midi_host->dev_addr, p_midi_host->ep_in, p_midi_host->epin_buf, p_midi_host->ep_in_max), 0);
-    result = true;
-  }
-  else
-  {
-    // Maybe the IN endpoint is only busy because the RP2040 host hardware
-    // is retrying a NAK'd IN transfer forever. Try aborting the NAK'd
-    // transfer to allow other transfers to happen on the one shared
-    // epx endpoint.
-    // TODO for RP2040 USB shared endpoint: usbh_edpt_clear_in_on_nak(p_midi_host->dev_addr, p_midi_host->ep_in);
-  }
-  return result;
 }
 
 uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t const* buffer, uint32_t bufsize)

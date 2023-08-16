@@ -64,15 +64,6 @@ static void blink_led(void)
     }
 }
 
-static void poll_usb_rx(bool connected)
-{
-    // device must be attached and have at least one endpoint ready to receive a message
-    if (!connected || tuh_midih_get_num_rx_cables(midi_dev_addr) < 1)
-        return;
-
-    tuh_midi_read_poll(midi_dev_addr);
-}
-
 static void send_next_note(bool connected)
 {
     static uint8_t first_note = 0x5b; // Mackie Control rewind
@@ -133,7 +124,6 @@ int main() {
         blink_led();
         bool connected = midi_dev_addr != 0 && tuh_midi_configured(midi_dev_addr);
 
-        poll_usb_rx(connected);
         send_next_note(connected);
     }
 }

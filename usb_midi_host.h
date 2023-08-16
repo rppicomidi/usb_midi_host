@@ -60,13 +60,6 @@ uint8_t tuh_midih_get_num_tx_cables (uint8_t dev_addr);
 // return the number of virtual midi cables on the device's IN endpoint
 uint8_t tuh_midih_get_num_rx_cables (uint8_t dev_addr);
 
-// request available data from the device. tuh_midi_message_received_cb() will
-// be called if the device has any data to send. Otherwise, the device will
-// respond NAK. This function blocks until the transfer completes or the
-// devices sends NAK.
-// This function will return false if the hardware is busy.
-bool tuh_midi_read_poll( uint8_t dev_addr );
-
 // Queue a packet to the device. The application
 // must call tuh_midi_stream_flush to actually have the
 // data go out. It is up to the application to properly
