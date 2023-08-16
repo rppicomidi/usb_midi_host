@@ -1,11 +1,15 @@
 # MIDI HOST DRIVER
 This README file contains the design notes and limitations of the
-MIDI host driver.
+MIDI host driver, and it describes how to build an run a simple
+example to test it. The driver should run on any TinyUSB supported
+processor with USB Host Bulk endpoint support, but the driver and
+example code have only been tested on a RP2040 in a Raspberry Pi
+Pico board.
 
-# OVERALL DESIGN AND INTEGRATION
-Although it is possible for the TinyUSB stack to incorporate this
-driver into its builtin driver support, this driver right now is
-used as an application driver external to the stack. Installing
+# OVERALL DESIGN, INTEGRATION
+Although it is possible in the future for the TinyUSB stack to
+incorporate this driver into its builtin driver support, right now
+it is used as an application driver external to the stack. Installing
 the driver to the TinyUSB stack requires adding it to the array
 of application drivers returned by the `usbh_app_driver_get_cb()`
 function. The `CMakeLists.txt` file contains two `INTERFACE` libraries.
@@ -17,6 +21,68 @@ If you want to add multiple host drivers, you must implement
 your own `usbh_app_driver_get_cb()` function and you should
 add the `usb_midi_host` library to your main application's
 `CMakeLists.txt` file's `target_link_libraries` instead.
+
+# EXAMPLE PROGRAM
+Before you try to use this driver with TinyUSB, please make
+sure the `usbh_app_driver_get_cb()` is supported in your
+version of TinyUSB. This feature was introduced on 15-Aug-2023
+with commit 7537985c080e439f6f97a021ce49f5ef48979c78. If you
+are using the `pico-sdk` for the Raspberry Pi Pico, you
+should be able to ensure you have the latest TinyUSB code
+by pulling the latest master branch from the TinyUSB repo.
+
+```
+cd ${PICO_SDK_PATH}/lib/tinyusb
+git checkout master
+git pull
+```
+
+The example directory in this project contains a simple example
+that plays a 5 note sequence on MIDI cable 0 and prints out
+every MIDI message it receives. It is designed to run on a
+Raspberry Pi Pico board. You will need a USB to UART adapter
+to see the serial interface display. You will need a 5V
+power source to provide power to the Pico board and the
+connected USB MIDI device. I used a Pico board wired as a
+Picoprobe to provide both the USB to UART adapter and the
+5V power source. Finally, you will need a microUSB to USB A
+adapter to allow you to connect your USB MIDI device to the
+test system.
+```
+cd example
+mkdir build
+```
+To build
+```
+cd build
+cmake ..
+make
+```
+To test, copy the UF2 file to the Pico board using whatever
+method you prefer. Connect a microUSB to USB A adapter to
+the Pico board USB connector. Connect the USB to UART adapter
+to the Pico board pins 1 and 2. Connect the Ground pin of the
+USB to UART adapter boardto a Ground pin of the Pico Board (I use
+the Pico board debug port Ground pin). If it is different from
+the ground pin of the USB to UART adapter, connect the Ground
+pin of the 5V power source to a ground pin of the Pico board.
+Connect the 5V pin of the 5V power source to pin 40 of the Pico
+board. Make sure the board powers up and displays the message
+```
+Pico MIDI Host Example
+```
+before you attach your USB MIDI device.
+
+Attach your USB MIDI device to the microUSB to USB A adapter
+with the appropriate cable. You should see a message similar
+to
+```
+MIDI device address = 1, IN endpoint 2 has 1 cables, OUT endpoint 1 has 1 cables
+```
+If your MIDI device can generate sound, you should start hearing a pattern
+of notes from B-flat to D. If your device is Mackie Control compatible, then
+the transport LEDs should sequence. If you use a control on your MIDI device, you
+should see the message traffic displayed on the serial console.
 
 # MAXIMUM NUMBER OF MIDI DEVICES ATTACHED TO HOST
 You should define the value `CFG_TUH_DEVICE_MAX` in tusb_config.h to
@@ -58,12 +124,11 @@ virtual cables.
 If you prefer, you may read and write raw 4-byte USB MIDI 1.0 packets.
 
 # SUBCLASS AUDIO CONTROL
-A MIDI device does not absolutely need to have an Audio Control Interface,
-unless it adheres to the USB Audio Class 2 spec, but many devices
-have them even if the devices do not have an audio streaming interface.
-Because this driver does not support audio streaming, the descriptor parser
-will skip past any audio control interface and audio streaming interface
-and open only the MIDI interface.
+A MIDI device is supposed to have an Audio Control Interface, before
+the MIDI Streaming Interface, but many commercial devices do not have one.
+To support these devices, the descriptor parser in this driver will skip
+past any audio control interface and audio streaming interface and open
+only the MIDI interface.
 
 An audio streaming host driver can use this driver by passing a pointer
 to the MIDI interface descriptor that is found after the audio streaming
@@ -74,12 +139,13 @@ pointer points to a MIDI interface descriptor, call midih_open() with that
 descriptor pointer.
 
 # CLASS SPECIFIC INTERFACE AND REQUESTS
-The host driver does not make use of the informaton in the class specific
-interface descriptors. In the future, a public API could be created to
-retrieve the string descriptors for the names of each ELEMENT, 
-IN JACK and OUT JACK, and how the device describes the connections.
+The host driver only makes use of the informaton in the class specific
+interface descriptors to extract string descriptors from each IN JACK and
+OUT JACK. To use these, you must set `CFG_MIDI_HOST_DEVSTRINGS` to 1 in
+your application's tusb_config.h file. It does not parse ELEMENT items
+for string descriptors.
 
-This driver also does not support class specific requests to control
+This driver does not support class specific requests to control
 ELEMENT items, nor does it support non-MIDI Streaming bulk endpoints.
 
 # MIDI CLASS SPECIFIC DESCRIPTOR TOTAL LENGTH FIELD IGNORED
@@ -89,17 +155,15 @@ Descriptor to include the length of the MIDIStreaming Endpoint
 Descriptors. This is wrong per my reading of the specification.
 
 # MESSAGE BUFFER DETAILS
-Messages buffers composed from USB data received on the IN endpoint will never contain
-running status because USB MIDI 1.0 class does not support that. Messages
-buffers to be sent to the device on the OUT endpont may contain running status
+Messages buffers composed from USB data received on the IN endpoint will never
+contain running status because USB MIDI 1.0 class does not support that. Messages
+buffers to be sent to the device on the OUT endpont could contain running status
 (the message might come from a UART data stream from a 5-pin DIN MIDI IN
-cable on the host, for example). The driver may in the future correctly compose 
-4-byte USB MIDI Class packets using the running status if need be. However,
-it does not currently do that. Also, use of running status is not a good idea
-overall because a single byte error can really mess up the data stream with no
-way to recover until the next non-real time status byte is in the message buffer.
+cable on the host, for example). However, this driver does not correctly parse or
+compose 4-byte USB MIDI Class packets from streams encoded with running status.
+If this feature is important to you, please file an issue.
 
-Message buffers to be sent to the device may contain Real time messages
+Message buffers to be sent to the device may contain real time messages
 such as MIDI clock. Real time messages may be inserted in the message 
 byte stream between status and data bytes of another message without disrupting
 the running status. However, because MIDI 1.0 class messages are sent 
