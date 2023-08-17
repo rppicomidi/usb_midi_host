@@ -6,6 +6,18 @@ processor with USB Host Bulk endpoint support, but the driver and
 example code have only been tested on a RP2040 in a Raspberry Pi
 Pico board.
 
+# ACKNOWLEDGEMENTS
+This driver code is based on code that rppicomidi submitted to TinyUSB
+as pull request #1219. The pull request was never merged and got stale.
+TinyUSB pull request #1627 by atoktoto started with pull request #1219,
+but used simpler RP2040 bulk endpoint support from TinyUSB pull request
+#1434. Pull request #1627 was reviewed by todbot, AndrewCapon, PaulHamsh,
+and rppicomidi and was substantially functional. This driver copied
+the `midi_host.c/h` files from pull request #1627 and renamed them
+`usb_midi_host.c/h`. It also fixed some minor issues in the driver
+API and added the application driver wrapper `usb_midi_host_app_driver.c`.
+The example code code is adapted from TinyUSB pull request #1627. 
+
 # OVERALL DESIGN, INTEGRATION
 Although it is possible in the future for the TinyUSB stack to
 incorporate this driver into its builtin driver support, right now
@@ -196,3 +208,4 @@ The host may fail to enumerate a device if it has too many endpoints, if it has
 if it has a Standard MS Transfer Bulk Data Endpoint Descriptor (not supported),
 if it has a poorly formed descriptor, or if the descriptor is too long for
 the host to read the whole thing.
+
