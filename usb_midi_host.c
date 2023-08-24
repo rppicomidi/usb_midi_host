@@ -487,9 +487,6 @@ bool midih_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const *d
   }
   p_midi_host->dev_addr = dev_addr;
 
-  TU_LOG2("Requesting poll IN endpoint %d\r\n", p_midi_host->ep_in);
-  TU_ASSERT(usbh_edpt_xfer(p_midi_host->dev_addr, p_midi_host->ep_in, p_midi_host->epin_buf, p_midi_host->ep_in_max), 0);
-
   if (tuh_midi_mount_cb)
   {
     tuh_midi_mount_cb(dev_addr, p_midi_host->ep_in, p_midi_host->ep_out, p_midi_host->num_cables_rx, p_midi_host->num_cables_tx);
@@ -511,8 +508,11 @@ bool midih_set_config(uint8_t dev_addr, uint8_t itf_num)
   TU_VERIFY(p_midi_host != NULL);
   p_midi_host->configured = true;
 
-  // TODO I don't think there are any special config things to do for MIDI
   usbh_driver_set_config_complete(dev_addr, p_midi_host->itf_num);
+
+  TU_LOG2("Requesting poll IN endpoint %d\r\n", p_midi_host->ep_in);
+  TU_ASSERT(usbh_edpt_xfer(p_midi_host->dev_addr, p_midi_host->ep_in, p_midi_host->epin_buf, p_midi_host->ep_in_max), 0);
+
   return true;
 }
 
