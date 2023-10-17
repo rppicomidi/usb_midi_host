@@ -165,11 +165,6 @@ bool midih_xfer_cb(uint8_t dev_addr, uint8_t ep_addr, xfer_result_t result, uint
   TU_VERIFY(p_midi_host != NULL);
   if ( ep_addr == p_midi_host->ep_in)
   {
-    if (0 == xferred_bytes)
-    {
-      return true; // No data to handle
-    }
-
     // receive new data if available
     uint32_t packets_queued = 0;
     if (xferred_bytes)
@@ -190,12 +185,13 @@ bool midih_xfer_cb(uint8_t dev_addr, uint8_t ep_addr, xfer_result_t result, uint
         }
         buf += 4;
       }
+      // invoke receive callback if available
+      if (tuh_midi_rx_cb && packets_queued)
+      {
+        tuh_midi_rx_cb(dev_addr, packets_queued);
+      }
     }
-    // invoke receive callback if available
-    if (tuh_midi_rx_cb)
-    {
-      tuh_midi_rx_cb(dev_addr, packets_queued);
-    }
+
     TU_LOG2("Requesting poll IN endpoint %d\r\n", p_midi_host->ep_in);
     TU_ASSERT(usbh_edpt_xfer(p_midi_host->dev_addr, p_midi_host->ep_in, p_midi_host->epin_buf, p_midi_host->ep_in_max), 0);
   }
