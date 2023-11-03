@@ -570,7 +570,7 @@ uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t con
 
       uint8_t const msg = data >> 4;
       stream->index = 2;
-      //stream->buffer[1] = data;
+      //stream->buffer[1] = data; //first check if its a running status byte, then update
       stream->total = 4;
 
       // Check to see if we're still in a SysEx transmit.
