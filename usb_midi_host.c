@@ -584,7 +584,7 @@ uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t con
           stream->total = 2;
         }
       }
-      else if (msg < 0x8)   //kein Statusbyte
+      else if (msg < 0x8)   //not a status byte
       {
         uint8_t const _msg = (stream->buffer[0]) & 0x0F;
         stream->index = 0;
