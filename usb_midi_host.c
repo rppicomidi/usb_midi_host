@@ -569,12 +569,13 @@ uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t con
       //------------- New event packet -------------//
 
       uint8_t const msg = data >> 4;
+      uint8_t const _msg = (stream->buffer[0]) & 0x0F;
       stream->index = 2;
       //stream->buffer[1] = data; //first check if its a running status byte, then update
       stream->total = 4;
 
       // Check to see if we're still in a SysEx transmit.
-      if ( stream->buffer[0] == CN_ + MIDI_CIN_SYSEX_START)
+      if ( _msg == MIDI_CIN_SYSEX_START)
       {
         stream->buffer[1] = data;
 
@@ -584,32 +585,23 @@ uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t con
           stream->total = 2;
         }
       }
-      else if (msg < 0x8)   //not a status byte
+      else if (msg < 0x8 && _msg >= 0x8 && _msg < 0xF)   //Running Status ?
       {
-        uint8_t const _msg = (stream->buffer[0]) & 0x0F;
-        stream->index = 0;
+        //stream->buffer[0] leave;
+        //stream->buffer[1] leave;
+        stream->buffer[2] = data;
 
-        // Running Status ?
-        if (_msg >= 0x8)
+        if (_msg < 0xC || _msg == 0xE)
         {
-            //stream->buffer[0] leave;
-            //stream->buffer[1] leave;
-            if (_msg < 0xC || _msg == 0xE)
-            {
-                stream->buffer[2] = data;
-                stream->index = 3;
-            }
-            else if (_msg < 0xF)
-            {
-                stream->buffer[2] = data;
-                stream->index = 3;
-                stream->total = 3;
-            }
-            else stream->buffer[0] = 0;
+            stream->index = 3;
         }
-        else stream->buffer[0] = 0;
+        else    //if (_msg < 0xF)
+        {
+            stream->index = 3;
+            stream->total = 3;
+        }
       }
-      else if ( (msg >= 0x8 && msg < 0xC) || msg == 0xE )
+      else if ( (msg >= 0x8 && msg <= 0xB) || msg == 0xE )
       {
         // Channel Voice Messages
         stream->buffer[1] = data;
@@ -654,7 +646,7 @@ uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t con
         stream->index = 2;
         stream->total = 2;
       }
-    }   //Ende von: if (stream->index == 0)
+    }   //End of: if (stream->index == 0)
     else
     {
       //------------- On-going (buffering) packet -------------//
