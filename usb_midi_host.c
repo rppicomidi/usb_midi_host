@@ -544,90 +544,109 @@ uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t con
   midi_stream_t *stream = &p_midi_host->stream_write;
 
   uint32_t i = 0;
+  uint8_t const CN_ = cable_num << 4;
+
   while ( (i < bufsize) && (tu_fifo_remaining(&p_midi_host->tx_ff) >= 4) )
   {
     uint8_t const data = buffer[i];
     i++;
+
     if (data >= MIDI_STATUS_SYSREAL_TIMING_CLOCK)
     {
-      // real-time messages need to be sent right away
-      midi_stream_t streamrt;
-      streamrt.buffer[0] = MIDI_CIN_SYSEX_END_1BYTE;
-      streamrt.buffer[1] = data;
-      streamrt.index = 2;
-      streamrt.total = 2;
-      uint16_t const count = tu_fifo_write_n(&p_midi_host->tx_ff, streamrt.buffer, 4);
-      // FIFO overflown, since we already check fifo remaining. It is probably race condition
-      TU_ASSERT(count == 4, i);
+        // real-time messages need to be sent right away
+        midi_stream_t streamrt;
+        streamrt.buffer[0] = CN_ + MIDI_CIN_1BYTE_DATA; //MIDI_CIN_SYSEX_END_1BYTE;
+        streamrt.buffer[1] = data;
+        streamrt.buffer[2] = 0;
+        streamrt.buffer[3] = 0;
+
+        uint16_t const count = tu_fifo_write_n(&p_midi_host->tx_ff, streamrt.buffer, 4);
+        // FIFO overflown, since we already check fifo remaining. It is probably race condition
+        TU_ASSERT(count == 4, i);
     }
     else if ( stream->index == 0 )
     {
       //------------- New event packet -------------//
 
       uint8_t const msg = data >> 4;
-
+      uint8_t const _msg = (stream->buffer[0]) & 0x0F;
       stream->index = 2;
-      stream->buffer[1] = data;
+      //stream->buffer[1] = data; //first check if its a running status byte, then update
+      stream->total = 4;
 
       // Check to see if we're still in a SysEx transmit.
-      if ( stream->buffer[0] == MIDI_CIN_SYSEX_START )
+      if ( _msg == MIDI_CIN_SYSEX_START)
       {
+        stream->buffer[1] = data;
+
         if ( data == MIDI_STATUS_SYSEX_END )
         {
-          stream->buffer[0] = MIDI_CIN_SYSEX_END_1BYTE;
+          stream->buffer[0] = CN_ + MIDI_CIN_SYSEX_END_1BYTE;
           stream->total = 2;
         }
-        else
+      }
+      else if (msg < 0x8 && _msg >= 0x8 && _msg < 0xF)   //Running Status ?
+      {
+        //stream->buffer[0] leave;
+        //stream->buffer[1] leave;
+        stream->buffer[2] = data;
+
+        if (_msg < 0xC || _msg == 0xE)
         {
-          stream->total = 4;
+            stream->index = 3;
+        }
+        else    //if (_msg < 0xF)
+        {
+            stream->index = 3;
+            stream->total = 3;
         }
       }
       else if ( (msg >= 0x8 && msg <= 0xB) || msg == 0xE )
       {
         // Channel Voice Messages
-        stream->buffer[0] = (uint8_t) ((cable_num << 4) | msg);
-        stream->total = 4;
+        stream->buffer[1] = data;
+        stream->buffer[0] = CN_ + msg;
       }
       else if ( msg == 0xC || msg == 0xD)
       {
         // Channel Voice Messages, two-byte variants (Program Change and Channel Pressure)
-        stream->buffer[0] = (uint8_t) ((cable_num << 4) | msg);
+        stream->buffer[1] = data;
+        stream->buffer[0] = CN_ + msg;
         stream->total = 3;
       }
       else if ( msg == 0xf )
       {
         // System message
+        stream->buffer[1] = data;
+
         if ( data == MIDI_STATUS_SYSEX_START )
         {
-          stream->buffer[0] = MIDI_CIN_SYSEX_START;
-          stream->total = 4;
+          stream->buffer[0] = CN_ + MIDI_CIN_SYSEX_START;
         }
         else if ( data == MIDI_STATUS_SYSCOM_TIME_CODE_QUARTER_FRAME || data == MIDI_STATUS_SYSCOM_SONG_SELECT )
         {
-          stream->buffer[0] = MIDI_CIN_SYSCOM_2BYTE;
+          stream->buffer[0] = CN_ + MIDI_CIN_SYSCOM_2BYTE;
           stream->total = 3;
         }
         else if ( data == MIDI_STATUS_SYSCOM_SONG_POSITION_POINTER )
         {
-          stream->buffer[0] = MIDI_CIN_SYSCOM_3BYTE;
-          stream->total = 4;
+          stream->buffer[0] = CN_ + MIDI_CIN_SYSCOM_3BYTE;
         }
-        else
+        else        //z.B. MIDI_STATUS_SYSCOM_TUNE_REQUEST
         {
-          stream->buffer[0] = MIDI_CIN_SYSEX_END_1BYTE;
+          stream->buffer[0] = CN_ + MIDI_CIN_1BYTE_DATA;
           stream->total = 2;
         }
       }
       else
       {
         // Pack individual bytes if we don't support packing them into words.
-        stream->buffer[0] = (uint8_t) (cable_num << 4 | 0xf);
-        stream->buffer[2] = 0;
-        stream->buffer[3] = 0;
+        stream->buffer[1] = data;
+        stream->buffer[0] = CN_ + 0xF;
         stream->index = 2;
         stream->total = 2;
       }
-    }
+    }   //End of: if (stream->index == 0)
     else
     {
       //------------- On-going (buffering) packet -------------//
@@ -636,32 +655,32 @@ uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t con
       stream->buffer[stream->index] = data;
       stream->index++;
       // See if this byte ends a SysEx.
-      if ( stream->buffer[0] == MIDI_CIN_SYSEX_START && data == MIDI_STATUS_SYSEX_END )
+      if ( stream->buffer[0] == CN_ + MIDI_CIN_SYSEX_START && data == MIDI_STATUS_SYSEX_END )
       {
-        stream->buffer[0] = MIDI_CIN_SYSEX_START + (stream->index - 1);
+        stream->buffer[0] = CN_ + MIDI_CIN_SYSEX_START + (stream->index - 1);   //END +1/+2/+3 Bytes
         stream->total = stream->index;
       }
     }
 
     // Send out packet
-    if ( stream->index >= 2 && stream->index == stream->total )
+    if ( stream->index >= 2 && stream->index >= stream->total )
     {
-      // zeroes unused bytes
+      //zeroes unused bytes
       for(uint8_t idx = stream->total; idx < 4; idx++) stream->buffer[idx] = 0;
       TU_LOG3_MEM(stream->buffer, 4, 2);
 
       uint16_t const count = tu_fifo_write_n(&p_midi_host->tx_ff, stream->buffer, 4);
 
-      // complete current event packet, reset stream
       stream->index = 0;
-      stream->total = 0;
 
       // FIFO overflown, since we already check fifo remaining. It is probably race condition
       TU_ASSERT(count == 4, i);
     }
   }
+
   return i;
 }
+
 
 bool tuh_midi_packet_write (uint8_t dev_addr, uint8_t const packet[4])
 {
