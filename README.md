@@ -169,11 +169,11 @@ Descriptors. This is wrong per my reading of the specification.
 # MESSAGE BUFFER DETAILS
 Messages buffers composed from USB data received on the IN endpoint will never
 contain running status because USB MIDI 1.0 class does not support that. Messages
-buffers to be sent to the device on the OUT endpont could contain running status
+buffers to be sent to the device on the OUT endpont can contain running status
 (the message might come from a UART data stream from a 5-pin DIN MIDI IN
-cable on the host, for example). However, this driver does not correctly parse or
+cable on the host, for example), and thanks to pull request#3 from @moseltronics,
+this driver should correctly parse or
 compose 4-byte USB MIDI Class packets from streams encoded with running status.
-If this feature is important to you, please file an issue.
 
 Message buffers to be sent to the device may contain real time messages
 such as MIDI clock. Real time messages may be inserted in the message 

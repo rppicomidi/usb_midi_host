@@ -555,7 +555,7 @@ uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t con
     {
         // real-time messages need to be sent right away
         midi_stream_t streamrt;
-        streamrt.buffer[0] = CN_ + MIDI_CIN_1BYTE_DATA; //MIDI_CIN_SYSEX_END_1BYTE;
+        streamrt.buffer[0] = CN_ + MIDI_CIN_1BYTE_DATA;
         streamrt.buffer[1] = data;
         streamrt.buffer[2] = 0;
         streamrt.buffer[3] = 0;
@@ -632,7 +632,7 @@ uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t con
         {
           stream->buffer[0] = CN_ + MIDI_CIN_SYSCOM_3BYTE;
         }
-        else        //z.B. MIDI_STATUS_SYSCOM_TUNE_REQUEST
+        else        //for example, MIDI_STATUS_SYSCOM_TUNE_REQUEST
         {
           stream->buffer[0] = CN_ + MIDI_CIN_1BYTE_DATA;
           stream->total = 2;

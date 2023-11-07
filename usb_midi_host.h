@@ -64,6 +64,8 @@ uint8_t tuh_midih_get_num_rx_cables (uint8_t dev_addr);
 // must call tuh_midi_stream_flush to actually have the
 // data go out. It is up to the application to properly
 // format this packet; this function does not check.
+// Using this function with tuh_midi_stream_write()
+// might produce undefined behavior.
 // Returns true if the packet was successfully queued.
 bool tuh_midi_packet_write (uint8_t dev_addr, uint8_t const packet[4]);
 
