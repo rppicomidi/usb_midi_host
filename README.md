@@ -116,6 +116,15 @@ Most USB MIDI devices contain both an IN endpoint and an OUT endpoint,
 but not all do. For example, some USB pedals only support an OUT endpoint.
 This driver allows that.
 
+# MAXIMUM NUMBER OF VIRTUAL CABLES
+A USB MIDI 1.0 Class message can support up to 16 virtual cables. The function
+`tuh_midi_stream_write()` uses 6 bytes of data stored in an array in
+an internal data structure to deserialize a MIDI byte stream to a
+particular virtual cable. To properly handle all 16 possible virtual cables,
+`CFG_TUH_DEVICE_MAX*16*6` data bytes are required. If the application
+needs to save memory, in file `tusb_cfg.h` set `CFG_TUH_CABLE_MAX` to
+something less than 16 as long as it is at least 1.
+
 # PUBLIC API
 Applications interact with this driver via 8-bit buffers of MIDI messages
 formed using the rules for sending bytes on a 5-pin DIN cable per the

@@ -79,7 +79,7 @@ typedef struct
   // For Stream read()/write() API
   // Messages are always 4 bytes long, queue them for reading and writing so the
   // callers can use the Stream interface with single-byte read/write calls.
-  midi_stream_t stream_write;
+  midi_stream_t stream_write[CFG_TUH_CABLE_MAX];
   midi_stream_t stream_read;
 
   /*------------- From this point, data is not cleared by bus reset -------------*/
@@ -541,7 +541,8 @@ uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t con
   midih_interface_t *p_midi_host = get_midi_host(dev_addr);
   TU_VERIFY(p_midi_host != NULL);
   TU_VERIFY(cable_num < p_midi_host->num_cables_tx);
-  midi_stream_t *stream = &p_midi_host->stream_write;
+  TU_VERIFY(cable_num < CFG_TUH_CABLE_MAX);
+  midi_stream_t *stream = &p_midi_host->stream_write[cable_num];
 
   uint32_t i = 0;
   uint8_t const CN_ = cable_num << 4;

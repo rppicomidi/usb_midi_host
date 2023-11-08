@@ -49,6 +49,22 @@
 #ifndef CFG_MIDI_HOST_DEVSTRINGS
 #define CFG_MIDI_HOST_DEVSTRINGS 0
 #endif
+
+// If you know you only need to convert serial MIDI
+// data to USB MIDI packets from cable numbers 0:N,
+// and N is less than 15, you can save a small amount
+// if RAM if you add the line
+// #define CFG_TUH_CABLE_MAX (N+1)
+// to tusb_config.h
+// For example, if your application is to convert
+// Serial Port MIDI to USB, then the highest cable number
+// is 0, N+1 is 1. You will save the deserialization buffer
+// for 15 virtual cables (about 90 bytes) by adding
+// #define CFG_TUH_CABLE_MAX 1
+// to tusb_config.h
+#ifndef CFG_TUH_CABLE_MAX
+#define CFG_TUH_CABLE_MAX 16
+#endif
 //--------------------------------------------------------------------+
 // Application API (Single Interface)
 //--------------------------------------------------------------------+
@@ -71,7 +87,8 @@ bool tuh_midi_packet_write (uint8_t dev_addr, uint8_t const packet[4]);
 
 // Queue a message to the device. The application
 // must call tuh_midi_stream_flush to actually have the
-// data go out.
+// data go out. Note that cable_num must be < CFG_TUH_CABLE_MAX
+// (note CFG_TUH_CABLE_MAX default is 16)
 uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t const* p_buffer, uint32_t bufsize);
 
 // Send any queued packets to the device if the host hardware is able to do it
