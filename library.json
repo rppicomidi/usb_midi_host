@@ -1,0 +1,7 @@
+{
+    "name": "USB MIDI HostLibrary",
+    "build": {
+        "libArchive": false,
+        "flags": "-DUSE_TINYUSB"
+    }
+}

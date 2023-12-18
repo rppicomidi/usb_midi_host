@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/.. usb_midi_host)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../.. usb_midi_host)
 add_executable(${target_proj}
     midi_host_example.c
 )

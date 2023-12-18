@@ -6,6 +6,12 @@ processor with USB Host Bulk endpoint support, but the driver and
 example code have only been tested on a RP2040 in a Raspberry Pi
 Pico board.
 
+# Arduino Support
+I was able to get this library to work on a Raspberry Pi Pico
+board using the the Arduino IDE by copying it to my
+local `libraries` directory. See the [EXAMPLES/Arduino](#arduino) section below
+for more info.
+
 # ACKNOWLEDGEMENTS
 This driver code is based on code that rppicomidi submitted to TinyUSB
 as pull request #1219. The pull request was never merged and got stale.
@@ -34,7 +40,9 @@ your own `usbh_app_driver_get_cb()` function and you should
 add the `usb_midi_host` library to your main application's
 `CMakeLists.txt` file's `target_link_libraries` instead.
 
-# EXAMPLE PROGRAM
+# EXAMPLE PROGRAMS
+
+## C-Code
 Before you try to use this driver with TinyUSB, please make
 sure the `usbh_app_driver_get_cb()` is supported in your
 version of TinyUSB. This feature was introduced on 15-Aug-2023
@@ -49,7 +57,7 @@ git checkout master
 git pull
 ```
 
-The example directory in this project contains a simple example
+The `examples/C-code` directory in this project contains a simple example
 that plays a 5 note sequence on MIDI cable 0 and prints out
 every MIDI message it receives. It is designed to run on a
 Raspberry Pi Pico board. You will need a USB to UART adapter
@@ -61,7 +69,7 @@ Picoprobe to provide both the USB to UART adapter and the
 adapter to allow you to connect your USB MIDI device to the
 test system.
 ```
-cd example
+cd examples\C-code
 mkdir build
 ```
 To build
@@ -95,6 +103,23 @@ If your MIDI device can generate sound, you should start hearing a pattern
 of notes from B-flat to D. If your device is Mackie Control compatible, then
 the transport LEDs should sequence. If you use a control on your MIDI device, you
 should see the message traffic displayed on the serial console.
+
+## Arduino
+The sketch file `examples\arduino\usb_midi_host_example.ino`
+implements the same functionality as the `midi_host_example.c` code
+implements in C code.
+To get this to work, first set up your Arduino IDE per the instructions
+[here](https://learn.adafruit.com/adafruit-feather-rp2040-with-usb-type-a-host/arduino-ide-setup).
+Make sure you can get the Device Info Example to work before on
+your hardware before you attempt to try the Arduino example.
+
+Next, copy this library to your `libraries` directory. For example
+```
+cd ${HOME}/Documents/Arduino/libraries
+git clone https://github.com/rppicomidi/usb_midi_host
+```
+Restart the Arduino IDE, and then open and run the sketch. Attach
+a MIDI device to the USB A port.
 
 # MAXIMUM NUMBER OF MIDI DEVICES ATTACHED TO HOST
 You should define the value `CFG_TUH_DEVICE_MAX` in tusb_config.h to
