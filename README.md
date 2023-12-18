@@ -7,10 +7,16 @@ example code have only been tested on a RP2040 in a Raspberry Pi
 Pico board.
 
 # Arduino Support
+This library was originally written for RP2040 support only.
 I was able to get this library to work on a Raspberry Pi Pico
 board using the the Arduino IDE by copying it to my
 local `libraries` directory. See the [EXAMPLES/Arduino](#arduino) section below
-for more info.
+for more info. This was my first attempt at an Arduino project, so
+I suspect there are better ways to do things. Issue reports and pull requests
+are welcome. At the time of this writing, there is a known issue with
+displaying Arduino Serial messages at startup. I put in some delays
+that work on one of my computers, but not others. Surely, there is a better
+way.
 
 # ACKNOWLEDGEMENTS
 This driver code is based on code that rppicomidi submitted to TinyUSB
@@ -106,20 +112,65 @@ should see the message traffic displayed on the serial console.
 
 ## Arduino
 The sketch file `examples\arduino\usb_midi_host_example.ino`
-implements the same functionality as the `midi_host_example.c` code
-implements in C code.
-To get this to work, first set up your Arduino IDE per the instructions
-[here](https://learn.adafruit.com/adafruit-feather-rp2040-with-usb-type-a-host/arduino-ide-setup).
-Make sure you can get the Device Info Example to work before on
-your hardware before you attempt to try the Arduino example.
+implements about the same functionality as the `midi_host_example.c` code
+implements in C code. However it uses a soft USB Host implemented in the
+RP2040 PIOs instead of the native hardware. If you are using a Raspberry
+Pi Pico or Pico W board, you must wire a USB A jack to the host port
+as follows:
+```
+Pico/Pico W board pin   USB A connector pin
+2 (or any GND pin)   ->     GND
+3 (GP2)              ->     D+  (via a 27 ohm resistor should improve things)
+4 (GP3)              ->     D-  (via a 27 ohm resistor should improve things)
+40 (VBus)            ->     VBus (safer if it has current limiting on the pin)
+```
+The Arduino example was tested using a Raspberry Pi Pico board with a USB A
+breakout board wired as above.
 
-Next, copy this library to your `libraries` directory. For example
+If you are wiring your own USB A port, be extra careful; you don't want to
+damage the attached MIDI gear because you swapped power and ground.
+If you are using hardware that attaches the USB A connector for you, please
+read the documentation for your RP2040 board. You may have to edit the
+sketch so the code maps the Host port D+ and D- pins correctly.
+
+To get the MIDI host example to work, first set up your Arduino IDE
+per the instructions [here](https://learn.adafruit.com/adafruit-feather-rp2040-with-usb-type-a-host/arduino-ide-setup).
+Make sure you can get the Device Info Example to work before on
+your hardware before you attempt to try the Arduino example for this project.
+That ensures your Arduino IDE and your hardware is working and you know
+how to use it.
+
+Next, copy this library to your `libraries` directory. For example, if your
+Sketchbook directory is in `${HOME}/Documents/Arduino/`,
 ```
 cd ${HOME}/Documents/Arduino/libraries
 git clone https://github.com/rppicomidi/usb_midi_host
 ```
-Restart the Arduino IDE, and then open and run the sketch. Attach
-a MIDI device to the USB A port.
+
+Next, copy the example program to your Sketchbook directory.
+For example, if your Sketchbook directory is in `${HOME}/Documents/Arduino/`,
+```
+cd ${HOME}/Documents/Arduino
+mkdir usb_midi_host_example
+cp libraries/usb_midi_host/examples/arduino/usb_midi_host_example.ino usb_midi_host_example
+```
+Restart the Arduino IDE, and then open and run the sketch. Note that
+you must set the Board speed to either 120MHz or 240MHz, and you must
+choose the Adafruit_TinyUSB library. Attach a MIDI device to the USB A port.
+You should see something like this in the Serial Port Monitor (of course,
+your connected MIDI device will likely be different).
+```
+MIDI device address = 1, IN endpoint 1 has 1 cables, OUT endpoint 2 has 1 cables
+Device attached, address = 1
+  iManufacturer       1     KORG INC.
+  iProduct            2     nanoKONTROL2
+  iSerialNumber       0
+
+```
+If your MIDI device can generate sound, you should start hearing a pattern
+of notes from B-flat to D. If your device is Mackie Control compatible, then
+the transport LEDs should sequence. If you use a control on your MIDI device, you
+should see the message traffic displayed on the Serial Port Monitor.
 
 # MAXIMUM NUMBER OF MIDI DEVICES ATTACHED TO HOST
 You should define the value `CFG_TUH_DEVICE_MAX` in tusb_config.h to
@@ -151,6 +202,17 @@ needs to save memory, in file `tusb_cfg.h` set `CFG_TUH_CABLE_MAX` to
 something less than 16 as long as it is at least 1.
 
 # PUBLIC API
+Documentation for all public API functions are in the file `usb_midi_host.h`.
+In addition to calling functions in the API, your program, whether it is written
+as C code, C++ code, or an Arduino sketch, must, at a minimum, implement the
+callback functions to handle asynchronous data from the attached MIDI device:
+```
+tuh_midi_mount_cb(uint8_t dev_addr, uint8_t in_ep, uint8_t out_ep, uint8_t num_cables_rx, uint16_t num_cables_tx)
+tuh_midi_umount_cb(uint8_t dev_addr, uint8_t instance);
+tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets);
+```
+See the programs in the `Examples` folder for examples of how to do this.
+
 Applications interact with this driver via 8-bit buffers of MIDI messages
 formed using the rules for sending bytes on a 5-pin DIN cable per the
 original MIDI 1.0 specification.
