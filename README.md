@@ -119,9 +119,9 @@ Pi Pico or Pico W board, you must wire a USB A jack to the host port
 as follows:
 ```
 Pico/Pico W board pin   USB A connector pin
-2 (or any GND pin)   ->     GND
-3 (GP2)              ->     D+  (via a 27 ohm resistor should improve things)
-4 (GP3)              ->     D-  (via a 27 ohm resistor should improve things)
+3 (or any GND pin)   ->     GND
+4 (GP2)              ->     D+  (via a 27 ohm resistor should improve things)
+5 (GP3)              ->     D-  (via a 27 ohm resistor should improve things)
 40 (VBus)            ->     VBus (safer if it has current limiting on the pin)
 ```
 The Arduino example was tested using a Raspberry Pi Pico board with a USB A
