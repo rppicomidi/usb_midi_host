@@ -119,13 +119,16 @@ Pi Pico or Pico W board, you must wire a USB A jack to the host port
 as follows:
 ```
 Pico/Pico W board pin   USB A connector pin
-3 (or any GND pin)   ->     GND
-4 (GP2)              ->     D+  (via a 27 ohm resistor should improve things)
-5 (GP3)              ->     D-  (via a 27 ohm resistor should improve things)
+23 (or any GND pin)  ->     GND
+21 (GP2)             ->     D+  (via a 22 ohm resistor should improve things)
+22 (GP3)             ->     D-  (via a 22 ohm resistor should improve things)
 40 (VBus)            ->     VBus (safer if it has current limiting on the pin)
 ```
-The Arduino example was tested using a Raspberry Pi Pico board with a USB A
-breakout board wired as above.
+Adafruit makes a [RP2040 board](https://www.adafruit.com/product/5723) that
+wires a USB A connector that should just work with the RP2040 pins GPIO pins
+this example selects. However, I have not tested it. I do not know if or
+how well it works. This Arduino example was tested using a Raspberry Pi
+Pico board with a USB A breakout board wired as above.
 
 If you are wiring your own USB A port, be extra careful; you don't want to
 damage the attached MIDI gear because you swapped power and ground.
