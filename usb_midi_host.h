@@ -91,6 +91,10 @@ bool tuh_midi_packet_write (uint8_t dev_addr, uint8_t const packet[4]);
 // (note CFG_TUH_CABLE_MAX default is 16)
 uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t const* p_buffer, uint32_t bufsize);
 
+/// Return true if the MIDI OUT FIFO has enough space for at
+/// least one more message
+bool tuh_midi_can_write_stream (uint8_t dev_addr);
+
 // Send any queued packets to the device if the host hardware is able to do it
 // Returns the number of bytes flushed to the host hardware or 0 if
 // the host hardware is busy or there is nothing in queue to send.

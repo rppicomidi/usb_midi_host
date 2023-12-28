@@ -540,6 +540,12 @@ static uint32_t write_flush(uint8_t dev_addr, midih_interface_t* midi)
   }
 }
 
+bool tuh_midi_can_write_stream (uint8_t dev_addr)
+{
+  midih_interface_t *p_midi_host = get_midi_host(dev_addr);
+  return (tu_fifo_remaining(&p_midi_host->tx_ff) >= 4);
+}
+
 uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t const* buffer, uint32_t bufsize)
 {
   midih_interface_t *p_midi_host = get_midi_host(dev_addr);
