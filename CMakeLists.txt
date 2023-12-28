@@ -17,3 +17,14 @@ target_include_directories(usb_midi_host_app_driver INTERFACE
  ${CMAKE_CURRENT_LIST_DIR}
 )
 target_link_libraries(usb_midi_host_app_driver INTERFACE usb_midi_host)
+
+add_library(rppicomidi_USBH_MIDI INTERFACE)
+target_sources(rppicomidi_USBH_MIDI INTERFACE
+  ${CMAKE_CURRENT_LIST_DIR}/rppicomidi_USBH_MIDI.cpp
+  $ENV{HOME}/Documents/Arduino/libraries/MIDI_Library/src/MIDI.cpp
+)
+target_include_directories(rppicomidi_USBH_MIDI INTERFACE
+ ${CMAKE_CURRENT_LIST_DIR}
+ $ENV{HOME}/Documents/Arduino/libraries/MIDI_Library/src
+)
+target_link_libraries(rppicomidi_USBH_MIDI INTERFACE usb_midi_host_app_driver)
