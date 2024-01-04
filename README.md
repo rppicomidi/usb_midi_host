@@ -1,6 +1,6 @@
-# USB MIDI HOST DRIVER
+# usb_midi_host
 This README file contains the design notes and limitations of the
-MIDI host application driver for TinyUSB. This driver supports
+usb_midi_host application driver for TinyUSB. This driver supports
 both C/C++ development and Arduino development.
 The code in this project should run on any TinyUSB supported
 processor with USB Host Bulk endpoint support, but the driver and
@@ -17,7 +17,7 @@ and rppicomidi and was substantially functional. This driver copied
 the `midi_host.c/h` files from pull request #1627 and renamed them
 `usb_midi_host.c/h`. It also fixed some minor issues in the driver
 API and added the application driver wrapper `usb_midi_host_app_driver.c`.
-The driver C example code code is adapted from TinyUSB pull request #1627. 
+The driver C example code code is adapted from TinyUSB pull request #1219. 
 
 # BUILDING APPLICATIONS WITH THIS DRIVER
 Although it is possible in the future for the TinyUSB stack to
@@ -43,7 +43,7 @@ your own `usbh_app_driver_get_cb()` function and you should
 add the `usb_midi_host` library to your main application's
 `CMakeLists.txt` file's `target_link_libraries` instead.
 
-See the files in `examples/C-code/usb_midi_host_rp2040_example`
+See the files in `examples/C-code/usb_midi_host_example`
 or `examples/C-code/usb_midi_host_pio_example`
 for examples.
 
@@ -99,16 +99,8 @@ Tools->Debug Port->Serial1
 ```
 NOTE: The USB Stack option "Adafruit TinyUSB Host" is not
 available in the `arduino-pico` package 3.6.2 and earlier.
-At the time of this writing, a newer version has not yet
-been released. If you need to select "Adafruit TinyUSB Host"
-as the USB Stack and a version of the library later than
-3.6.2 is not released yet, please follow the instructions
-[here](https://github.com/earlephilhower/arduino-pico/blob/master/docs/install.rst#installing-via-git) to install the latest development version of the package.
-The instructions reference installing the software assume
-your sketch directory is `~/Arduino`. If your sketch
-directory is somewhere else, clone the library as so that
-the directory `hardware` is at the same directory level
-as the `libraries` directory.
+You must install version 3.6.3 or later to make this option
+available.
 
 # HARDWARE
 The example programs have been tested on a Raspberry Pi Pico board.
@@ -276,7 +268,7 @@ suited for applications that require the application to touch
 all MIDI messages (for example, bridging and filtering). If you want
 your application to use the Arduino MIDI library API
 to access the devices attached to your USB MIDI host,
-install the [rppicomidi_USBH_MIDI](https://github.com/rppicomidi/rppicomidi_USBH_MIDI) wrapper library in addition
+install the [EZ_USB_MIDI_HOST](https://github.com/rppicomidi/EZ_USB_MIDI_HOST) wrapper library in addition
 to this library. See that repository for more information.
 
 # EXAMPLE PROGRAMS
