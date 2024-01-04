@@ -47,7 +47,7 @@
 /// this library to your application.
 #include "rppicomidi_USBH_MIDI_Config.h"
 
-#include "Rppicomidi_USBH_MIDI_Device.h"
+#include "rppicomidi_USBH_MIDI_Device.h"
 
 #include "rppicomidi_USBH_MIDI_namespace.h"
 

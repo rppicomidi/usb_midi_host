@@ -91,7 +91,6 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "cinttypes": "cpp",
-        "variant": "cpp",
-        "ranges": "cpp"
+        "variant": "cpp"
     }
 }

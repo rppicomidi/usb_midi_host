@@ -1,42 +1,39 @@
-# MIDI HOST DRIVER
+# USB MIDI HOST DRIVER
 This README file contains the design notes and limitations of the
-MIDI host driver, and it describes how to build an run a simple
-example to test it. The driver should run on any TinyUSB supported
+MIDI host application driver for TinyUSB. This driver supports
+both C/C++ development and Arduino development.
+The code in this project should run on any TinyUSB supported
 processor with USB Host Bulk endpoint support, but the driver and
 example code have only been tested on a RP2040 in a Raspberry Pi
 Pico board.
 
-# Arduino Support
-This library was originally written for RP2040 support only.
-I was able to get this library to work on a Raspberry Pi Pico
-board using the the Arduino IDE by copying it to my
-local `libraries` directory. See the [EXAMPLES/Arduino](#arduino) section below
-for more info. This was my first attempt at an Arduino project, so
-I suspect there are better ways to do things. Issue reports and pull requests
-are welcome. At the time of this writing, there is a known issue with
-displaying Arduino Serial messages at startup. I put in some delays
-that work on one of my computers, but not others. Surely, there is a better
-way.
-
 # ACKNOWLEDGEMENTS
-This driver code is based on code that rppicomidi submitted to TinyUSB
-as pull request #1219. The pull request was never merged and got stale.
-TinyUSB pull request #1627 by atoktoto started with pull request #1219,
-but used simpler RP2040 bulk endpoint support from TinyUSB pull request
+The application driver code is based on code that rppicomidi submitted
+to TinyUSB as pull request #1219. The pull request was never merged and
+got stale. TinyUSB pull request #1627 by atoktoto started with pull request
+#1219, but used simpler RP2040 bulk endpoint support from TinyUSB pull request
 #1434. Pull request #1627 was reviewed by todbot, AndrewCapon, PaulHamsh,
 and rppicomidi and was substantially functional. This driver copied
 the `midi_host.c/h` files from pull request #1627 and renamed them
 `usb_midi_host.c/h`. It also fixed some minor issues in the driver
 API and added the application driver wrapper `usb_midi_host_app_driver.c`.
-The example code code is adapted from TinyUSB pull request #1627. 
+The driver C example code code is adapted from TinyUSB pull request #1627. 
 
-# OVERALL DESIGN, INTEGRATION
+# BUILDING APPLICATIONS WITH THIS DRIVER
 Although it is possible in the future for the TinyUSB stack to
 incorporate this driver into its builtin driver support, right now
 it is used as an application driver external to the stack. Installing
 the driver to the TinyUSB stack requires adding it to the array
 of application drivers returned by the `usbh_app_driver_get_cb()`
-function. The `CMakeLists.txt` file contains two `INTERFACE` libraries.
+function.
+
+## Building C/C++ Applications
+Before you attempt to build any C/C++ applications, be sure
+you have the toolchain properly installed and can build and
+run the blink example found in the [Getting Started Guide](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf).
+
+
+The `CMakeLists.txt` file contains two `INTERFACE` libraries.
 If this driver is your only application USB host driver external
 to the TinyUSB stack, you should install this driver by
 adding the `usb_midi_host_app_driver` library to your main
@@ -46,36 +43,268 @@ your own `usbh_app_driver_get_cb()` function and you should
 add the `usb_midi_host` library to your main application's
 `CMakeLists.txt` file's `target_link_libraries` instead.
 
-# EXAMPLE PROGRAMS
+See the files in `examples/C-code/usb_midi_host_rp2040_example`
+or `examples/C-code/usb_midi_host_pio_example`
+for examples.
 
-## C-Code
-Before you try to use this driver with TinyUSB, please make
-sure the `usbh_app_driver_get_cb()` is supported in your
-version of TinyUSB. This feature was introduced on 15-Aug-2023
-with commit 7537985c080e439f6f97a021ce49f5ef48979c78. If you
-are using the `pico-sdk` for the Raspberry Pi Pico, you
-should be able to ensure you have the latest TinyUSB code
-by pulling the latest master branch from the TinyUSB repo.
+NOTE: You will need a version of the TinyUSB library that supports
+USB Host Application drivers. This feature was introduced to TinyUSB on
+15-Aug-2023 with commit 7537985c080e439f6f97a021ce49f5ef48979c78
+which is release 0.16.0 or later. As of this writing, the `pico-sdk`
+version 1.5.1 ships with TinyUSB version 0.14.0. Please make
+sure you have the latest TinyUSB code library in your pico-sdk
+by using the following commands:
 
 ```
 cd ${PICO_SDK_PATH}/lib/tinyusb
 git checkout master
 git pull
 ```
-
-The `examples/C-code` directory in this project contains a simple example
-that plays a 5 note sequence on MIDI cable 0 and prints out
-every MIDI message it receives. It is designed to run on a
-Raspberry Pi Pico board. You will need a USB to UART adapter
-to see the serial interface display. You will need a 5V
-power source to provide power to the Pico board and the
-connected USB MIDI device. I used a Pico board wired as a
-Picoprobe to provide both the USB to UART adapter and the
-5V power source. Finally, you will need a microUSB to USB A
-adapter to allow you to connect your USB MIDI device to the
-test system.
+If you are using the Pico_PIO_USB Library to implement the
+USB Host hardware (see the Hardware section, below), install
+the Pico_PIO_USB Library. You must have the Python interpreter
+installed to run this command:
 ```
-cd examples\C-code
+python tools/get_deps.py rp2040
+```
+See the TinyUSB [Dependencies](https://docs.tinyusb.org/en/latest/reference/getting_started.html#dependencies) documentation for
+more information.
+
+## Building Arduino Applications
+Include this library, the Adafruit TinyUSB Arduino Library,
+and, if your host port hardware requires it, the Pico_PIO_USB
+Library using the Arduino IDE Library Manager. If this library
+is not available in the Arduino IDE Library Manager yet,
+please copy this library code to a `usb_midi_host` directory
+under your sketech folder `libraries` directory.
+
+To build any Arduino application on the RP2040, you should
+install the Earle Philhower [arduino-pico](https://github.com/earlephilhower/arduino-pico) package for the Arduino IDE.
+
+You need to set up the board under the Tools Menu.
+If you are using the Pico_PIO_USB Library to implement your
+USB Host hardware:
+```
+Tools->CPU Speed->120 MHz (or 240 MHz (Overclock))
+Tools->USB Stack->"Adafruit TinyUSB"
+Tools->Debug Port->Serial
+```
+
+If you are using the native RP2040 USB hardware to implement
+your USB Host hardware:
+```
+Tools->CPU Speed->133 MHz (or faster, if you wish)
+Tools->USB Stack->"Adafruit TinyUSB Host"
+Tools->Debug Port->Serial1
+```
+NOTE: The USB Stack option "Adafruit TinyUSB Host" is not
+available in the `arduino-pico` package 3.6.2 and earlier.
+At the time of this writing, a newer version has not yet
+been released. If you need to select "Adafruit TinyUSB Host"
+as the USB Stack and a version of the library later than
+3.6.2 is not released yet, please follow the instructions
+[here](https://github.com/earlephilhower/arduino-pico/blob/master/docs/install.rst#installing-via-git) to install the latest development version of the package.
+The instructions reference installing the software assume
+your sketch directory is `~/Arduino`. If your sketch
+directory is somewhere else, clone the library as so that
+the directory `hardware` is at the same directory level
+as the `libraries` directory.
+
+# HARDWARE
+The example programs have been tested on a Raspberry Pi Pico board.
+That board, like most RP2040-based boards, does not ship with a
+USB Host friendly connector, and the development environments
+generally assume you are using the USB connector in Device mode
+to provide power to the board, and to allow software update, to
+provide a serial port interface for a serial console monitor, etc.
+You will likely have to modify your board to add a USB Host interface
+connector. The RP2040-based boards offer two approaches.
+
+## Software-based USB Host Port: Pico_PIO_USB Library
+The Pico_PIO_USB library, which works for both C/C++ and Arduino,
+uses the RP2040 PIO modules and CPU core 1 to to efficiently
+bit-bang a full-speed USB host port on 2 GPIO pins. Adafruit makes
+a [RP2040 board](https://www.adafruit.com/product/5723) that uses
+this method for USB Host. I have not tested this software
+on the Adafruit board, but I think the example programs in this
+library should work on it.
+
+If you are not using the Adafruit or similar board, you need to
+wire up something yourself. Wire a USB A jack to the GPIO and
+power pins on the Pico board as follows:
+```
+Pico/Pico W board pin   USB A connector pin
+23 (or any GND pin)  ->     GND
+21 (GP2)             ->     D+  (via a 22 ohm resistor should improve things)
+22 (GP3)             ->     D-  (via a 22 ohm resistor should improve things)
+40 (VBus)            ->     VBus (safer if it has current limiting on the pin)
+```
+I use a low-cost USB breakout board and solder the 22 ohm resistors to cut
+traces on the D+ and D- lines.
+
+TODO Insert photos of my setup here.
+
+The main advantages of this approach are:
+- Your board will have both a USB Device port and
+a USB Host port, which, in an Arduino environment
+especially, is convenient. For example, the Arduino
+`Serial` object will work with the Serial Monitor
+console, and firmware update via the Arduino IDE
+is supported.
+- You can buy off-the-shelf hardware already wired
+to support a Host port using this method.
+
+The disadvantages of this approach are:
+- It consumes 2 GPIO pins
+- The Pico_PIO_USB library consumes all of PIO1 and
+most of PIO0. Although it will still work, you have
+to fool with configuration to get the driver to
+coexist with the Pico W board radio module driver.
+- The RP2040 clock must run at a multiple of 120MHz
+- It consumes CPU 1
+- It takes code storage space and RAM space.
+
+To use this approach, make the Pico_PIO_USB library available
+to your application build.
+
+## RP2040 Native USB Hardware
+The RP2040 USB core natively supports a host mode that is
+good enough for MIDI. The minimum modification to a Pico
+board is to connect a USB OTG adapter to the Micro USB
+B connector and add an external 5V power supply between
+the VBus pin (pin 40 on the Pico board) and any ground pin
+on the Pico board. As long as your 5V power supply is clean
+and protected against short circuit, it should be OK. It is
+how I test native hardware USB Host.
+
+TODO Insert photo of my setup here.
+
+The main advantages of this approach are
+- It does not consume 2 GPIO pins
+- It does not consume PIO0 and PIO1
+- It does not restrict CPU operating speed
+- It does not consume CPU 1
+- It does not need the memory the Pico_PIO_USB library uses
+
+The disadvantages of this approach are
+- Serial port console now has to use a UART; you have to
+provide external hardware to interface that UART to your
+computer terminal software (e.g., a Picoprobe). In Arduino,
+you have to use `Serial1` or `Serial2` UARTs for serial
+monitor to work.
+- Software update either requires you to unplug the OTG
+connector and connect the RP2040 in flash drive mode,
+or you have to use a Picoprobe or similar debug interface.
+
+NOTE: If you are using native USB hardware in USB Host mode
+for an Arduino project, please look at the note in the
+[Building Arduino Applications](#building-arduino-applications)
+section.
+
+## API
+
+### Connection Management
+There are two connection management functions every application must implement:
+- `tuh_midi_mount_cb()`
+- `tuh_midi_unmount_cb()`
+
+Each device connected to the USB Host, either directly, or through
+a hub, is identified by its device address, which is an 8-bit number.
+In addition, during enumeration, the host discovers how many virtual
+MIDI IN cables and how many virtual MIDI OUT cables the device has.
+When someone plugs a MIDI device to the USB Host, this driver will
+call the `tuh_midi_mount_cb()` function so the application can save
+the device address and virtual cable information.
+
+When someone unplugs a MIDI device from the USB Host, this driver
+will call the `tuh_midi_unmount_cb()` function so the application
+can mark the previous device address as invalid.
+
+### MIDI Message Communication
+There is one function that every application that supports MIDI IN
+must implement
+- `tuh_midi_rx_cb()`
+
+When the USB Host receives MIDI IN packets from the MIDI device,
+this driver calls `tuh_midi_rx_cb()` to notify the application
+that MIDI data is available. The application should read that
+MIDI data as soon as possible.
+
+There are two ways to handle USB MIDI messages:
+- As 4-byte raw USB MIDI 1.0 packets
+    - `tuh_midi_packet_read()`
+    - `tuh_midi_packet_write()`
+
+- As serial MIDI 1.0 byte streams
+    - `tuh_midi_stream_read()`
+    - `tuh_midi_stream_write()`
+
+Both `tuh_midi_packet_write()` and `tuh_midi_stream_write()`
+only write MIDI data to a queue. Once you are done writing
+all MIDI messages that you want to send in a single
+USB Bulk transfer (usually 64 bytes but sometimes only
+8 bytes), you must call `tuh_midi_stream_flush()`.
+
+The `examples` folder contains both C-Code and Arduino
+code examples of how to use the API.
+
+### MIDI Device Strings API
+A USB MIDI device can attach a string descriptor to any or
+all virtual MIDI cables. This driver can retrieve the indices
+to the strings using these functions:
+```
+tuh_midi_get_rx_cable_istrings();
+tuh_midi_get_tx_cable_istrings();
+tuh_midi_get_all_istrings()
+```
+
+You can then use the TinyUSB API for retrieving a device string
+by string index to get the UTF-16LE string.
+
+NOTE: To save space and to speed up enumeration, by default,
+`CFG_MIDI_HOST_DEVSTRINGS` is set to 0, so the MIDI Device
+String API is disabled by default. If you want to use the MIDI
+Device String API, please add, either before you include this
+library, or to your C/C++ application project `tusb_config.h`
+```
+#define CFG_MIDI_HOST_DEVSTRINGS 1
+```
+
+## Arduino MIDI Library API
+This library API is designed to be relatively low level and is well
+suited for applications that require the application to touch
+all MIDI messages (for example, bridging and filtering). If you want
+your application to use the Arduino MIDI library API
+to access the devices attached to your USB MIDI host,
+install the [rppicomidi_USBH_MIDI](https://github.com/rppicomidi/rppicomidi_USBH_MIDI) wrapper library in addition
+to this library. See that repository for more information.
+
+# EXAMPLE PROGRAMS
+
+## Software
+Each example program does the same thing:
+- play a 5 note sequence on MIDI cable 0
+- print out every MIDI message it receives on cable 0.
+
+The only difference among them is whether they are C/C++
+examples or Arduino examples, and whether they use native
+rp2040 hardware (in directory with name `usb_midi_host_example`)
+or the Pico_PIO_USB software USB Host (in directory with name
+`usb_midi_host_pio_example`).
+
+## Building C-Code Examples
+First, set up your environment for command line pico-sdk
+program builds. If you are new to this, please see
+the [Getting Started Guide](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf) and build the blink example
+before you try this.
+
+Next, install the libraries as described in the Building C/C++
+Applications section.
+
+To build:
+
+```
+cd examples/C-code/[example program directory name]
 mkdir build
 ```
 To build
@@ -84,23 +313,17 @@ cd build
 cmake ..
 make
 ```
-To test, copy the UF2 file to the Pico board using whatever
-method you prefer. Connect a microUSB to USB A adapter to
-the Pico board USB connector. Connect the USB to UART adapter
-to the Pico board pins 1 and 2. Connect the Ground pin of the
-USB to UART adapter boardto a Ground pin of the Pico Board (I use
-the Pico board debug port Ground pin). If it is different from
-the ground pin of the USB to UART adapter, connect the Ground
-pin of the 5V power source to a ground pin of the Pico board.
-Connect the 5V pin of the 5V power source to pin 40 of the Pico
-board. Make sure the board powers up and displays the message
+To test, first prepare your development board as described
+in the [Hardware](#hardware) section of this document. Next,
+copy the UF2 file to the Pico board using whatever
+method you prefer. Make sure the board powers up and displays the message
 ```
 Pico MIDI Host Example
 ```
 before you attach your USB MIDI device.
 
-Attach your USB MIDI device to the microUSB to USB A adapter
-with the appropriate cable. You should see a message similar
+Attach your USB MIDI device to the USB A connector your
+hardware provides. You should see a message similar
 to
 ```
 MIDI device address = 1, IN endpoint 2 has 1 cables, OUT endpoint 1 has 1 cables
@@ -110,56 +333,23 @@ of notes from B-flat to D. If your device is Mackie Control compatible, then
 the transport LEDs should sequence. If you use a control on your MIDI device, you
 should see the message traffic displayed on the serial console.
 
-## Arduino
-The sketch file `examples\arduino\usb_midi_host_example.ino`
-implements about the same functionality as the `midi_host_example.c` code
-implements in C code. However it uses a soft USB Host implemented in the
-RP2040 PIOs instead of the native hardware. If you are using a Raspberry
-Pi Pico or Pico W board, you must wire a USB A jack to the host port
-as follows:
-```
-Pico/Pico W board pin   USB A connector pin
-23 (or any GND pin)  ->     GND
-21 (GP2)             ->     D+  (via a 22 ohm resistor should improve things)
-22 (GP3)             ->     D-  (via a 22 ohm resistor should improve things)
-40 (VBus)            ->     VBus (safer if it has current limiting on the pin)
-```
-Adafruit makes a [RP2040 board](https://www.adafruit.com/product/5723) that
-wires a USB A connector that should just work with the RP2040 pins GPIO pins
-this example selects. However, I have not tested it. I do not know if or
-how well it works. This Arduino example was tested using a Raspberry Pi
-Pico board with a USB A breakout board wired as above.
+NOTE: Unfortunately, the pico-sdk does not currently allow you to use the
+USB device port and the PIO USB host port at the same time. All printf()
+output goes to the UART 0 serial port.
 
-If you are wiring your own USB A port, be extra careful; you don't want to
-damage the attached MIDI gear because you swapped power and ground.
-If you are using hardware that attaches the USB A connector for you, please
-read the documentation for your RP2040 board. You may have to edit the
-sketch so the code maps the Host port D+ and D- pins correctly.
+NOTE: If you are using the Adafruit Feather board that supports USB host,
+you need to define `USE_ADAFRUIT_FEATHER_RP2040_USBHOST` in `tusb_config.h` or
+else `board_init()` will not enable the USB Host power supply. `tusb_config.h`
+already has a line you can uncomment to make this work.
 
-To get the MIDI host example to work, first set up your Arduino IDE
-per the instructions [here](https://learn.adafruit.com/adafruit-feather-rp2040-with-usb-type-a-host/arduino-ide-setup).
-Make sure you can get the Device Info Example to work before on
-your hardware before you attempt to try the Arduino example for this project.
-That ensures your Arduino IDE and your hardware is working and you know
-how to use it.
+## Building Arduino Examples
+To build and run the Arduino examples, in the Arduino IDE,
+use the Library Manager to install this library and accept
+all of its dependencies. If your hardware requires it,
+install the Pico PIO USB library too. Next, in the IDE,
+File->Examples->usb_midi_host->arduino->[your example program name]
 
-Next, copy this library to your `libraries` directory. For example, if your
-Sketchbook directory is in `${HOME}/Documents/Arduino/`,
-```
-cd ${HOME}/Documents/Arduino/libraries
-git clone https://github.com/rppicomidi/usb_midi_host
-```
-
-Next, copy the example program to your Sketchbook directory.
-For example, if your Sketchbook directory is in `${HOME}/Documents/Arduino/`,
-```
-cd ${HOME}/Documents/Arduino
-mkdir usb_midi_host_example
-cp libraries/usb_midi_host/examples/arduino/usb_midi_host_example.ino usb_midi_host_example
-```
-Restart the Arduino IDE, and then open and run the sketch. Note that
-you must set the Board speed to either 120MHz or 240MHz, and you must
-choose the Adafruit_TinyUSB library. Attach a MIDI device to the USB A port.
+Attach a MIDI device to the USB A port.
 You should see something like this in the Serial Port Monitor (of course,
 your connected MIDI device will likely be different).
 ```
@@ -175,7 +365,8 @@ of notes from B-flat to D. If your device is Mackie Control compatible, then
 the transport LEDs should sequence. If you use a control on your MIDI device, you
 should see the message traffic displayed on the Serial Port Monitor.
 
-# MAXIMUM NUMBER OF MIDI DEVICES ATTACHED TO HOST
+# CONFIGURATION and DESIGN DETAILS
+## Maximum Number of MIDI Devices Attached to the Host
 You should define the value `CFG_TUH_DEVICE_MAX` in tusb_config.h to
 match the number of USB hub ports attached to the USB host port. For
 example
@@ -184,7 +375,7 @@ example
 #define CFG_TUH_DEVICE_MAX          (CFG_TUH_HUB ? 4 : 1) // hub typically has 4 ports
 ```
 
-# MAXIMUM NUMBER OF ENDPOINTS
+## Maximum Number of USB Endpoints
 Although the USB MIDI 1.0 Class specification allows an arbitrary number
 of endpoints, this driver supports at most one USB BULK DATA IN endpoint
 and one USB BULK DATA OUT endpoint. Each endpoint can support up to 16 
@@ -195,7 +386,7 @@ Most USB MIDI devices contain both an IN endpoint and an OUT endpoint,
 but not all do. For example, some USB pedals only support an OUT endpoint.
 This driver allows that.
 
-# MAXIMUM NUMBER OF VIRTUAL CABLES
+## Maximum Number of Virtual Cables
 A USB MIDI 1.0 Class message can support up to 16 virtual cables. The function
 `tuh_midi_stream_write()` uses 6 bytes of data stored in an array in
 an internal data structure to deserialize a MIDI byte stream to a
@@ -204,37 +395,7 @@ particular virtual cable. To properly handle all 16 possible virtual cables,
 needs to save memory, in file `tusb_cfg.h` set `CFG_TUH_CABLE_MAX` to
 something less than 16 as long as it is at least 1.
 
-# PUBLIC API
-Documentation for all public API functions are in the file `usb_midi_host.h`.
-In addition to calling functions in the API, your program, whether it is written
-as C code, C++ code, or an Arduino sketch, must, at a minimum, implement the
-callback functions to handle asynchronous data from the attached MIDI device:
-```
-tuh_midi_mount_cb(uint8_t dev_addr, uint8_t in_ep, uint8_t out_ep, uint8_t num_cables_rx, uint16_t num_cables_tx)
-tuh_midi_umount_cb(uint8_t dev_addr, uint8_t instance);
-tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets);
-```
-See the programs in the `Examples` folder for examples of how to do this.
-
-Applications interact with this driver via 8-bit buffers of MIDI messages
-formed using the rules for sending bytes on a 5-pin DIN cable per the
-original MIDI 1.0 specification.
-
-To send a message to a device, the Host application composes a sequence
-of status and data bytes in a byte array and calls the API function.
-The arguments of the function are a pointer to the byte array, the number
-of bytes in the array, and the target virtual cable number 0-15.
-
-When the host driver receives a message from the device, the host driver
-will call a callback function that the host application registers. This
-callback function contains a pointer to a message buffer, a message length,
-and the virtual cable number of the message buffer. One complete bulk IN
-endpoint transfer might contain multiple messages targeted to different
-virtual cables.
-
-If you prefer, you may read and write raw 4-byte USB MIDI 1.0 packets.
-
-# SUBCLASS AUDIO CONTROL
+## Subclass of Audio Control
 A MIDI device is supposed to have an Audio Control Interface, before
 the MIDI Streaming Interface, but many commercial devices do not have one.
 To support these devices, the descriptor parser in this driver will skip
@@ -249,7 +410,7 @@ audio streaming interface and endpoint descriptors. When the next descriptor
 pointer points to a MIDI interface descriptor, call midih_open() with that
 descriptor pointer.
 
-# CLASS SPECIFIC INTERFACE AND REQUESTS
+## Class Specific Interface and Requests
 The host driver only makes use of the informaton in the class specific
 interface descriptors to extract string descriptors from each IN JACK and
 OUT JACK. To use these, you must set `CFG_MIDI_HOST_DEVSTRINGS` to 1 in
@@ -259,13 +420,13 @@ for string descriptors.
 This driver does not support class specific requests to control
 ELEMENT items, nor does it support non-MIDI Streaming bulk endpoints.
 
-# MIDI CLASS SPECIFIC DESCRIPTOR TOTAL LENGTH FIELD IGNORED
+## MIDI Class Specific Descriptor Total Length Field Ignored
 I have observed at least one keyboard by a leading manufacturer that
 sets the wTotalLength field of the Class-Specific MS Interface Header
 Descriptor to include the length of the MIDIStreaming Endpoint
 Descriptors. This is wrong per my reading of the specification.
 
-# MESSAGE BUFFER DETAILS
+## Message Buffer Details
 Messages buffers composed from USB data received on the IN endpoint will never
 contain running status because USB MIDI 1.0 class does not support that. Messages
 buffers to be sent to the device on the OUT endpont can contain running status
@@ -286,7 +447,7 @@ Real time messages the device sends to the host can only appear between
 the status byte and data bytes of the message in System Exclusive messages
 that are longer than 3 bytes.
 
-# POORLY FORMED USB MIDI DATA PACKETS FROM THE DEVICE
+## Poorly Formed USB MIDI Data Packets from the Device
 Some devices do not properly encode the code index number (CIN) for the
 MIDI message status byte even though the 3-byte data payload correctly encodes
 the MIDI message. This driver looks to the byte after the CIN byte to decide
@@ -302,9 +463,8 @@ every endpoint even if only one 4-byte packet is required (e.g., NOTE ON).
 These devices send packets with 4 packet bytes 0. This driver ignores all
 zero packets without reporting an error.
 
-# ENUMERATION FAILURES
+## Enumeration Failures
 The host may fail to enumerate a device if it has too many endpoints, if it has
 if it has a Standard MS Transfer Bulk Data Endpoint Descriptor (not supported),
 if it has a poorly formed descriptor, or if the descriptor is too long for
 the host to read the whole thing.
-

@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.13)
 set(BOARD pico_sdk)
 include(pico_sdk_import.cmake)
 
-set(target_proj rppicomidi_USBH_MIDI_example)
+set(target_proj usb_midi_host_pio_example)
 project(${target_proj} C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -12,10 +12,11 @@ pico_sdk_init()
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../../.. usb_midi_host)
 add_executable(${target_proj}
-    rppicomidi_USBH_MIDI_example.cpp
+    usb_midi_host_pio_example.c
 )
 
 pico_enable_stdio_uart(${target_proj} 1)
+#pico_enable_stdio_usb(${target_proj} 1)
 
 target_include_directories(${target_proj} PRIVATE
  ${CMAKE_CURRENT_LIST_DIR}
@@ -23,12 +24,14 @@ target_include_directories(${target_proj} PRIVATE
 
 target_link_options(${target_proj} PRIVATE -Xlinker --print-memory-usage)
 target_compile_options(${target_proj} PRIVATE -Wall -Wextra)
-target_link_libraries(${target_proj} tinyusb_host tinyusb_board rppicomidi_USBH_MIDI pico_stdlib)
+target_link_libraries(${target_proj} tinyusb_device tinyusb_host tinyusb_board usb_midi_host_app_driver 
+  pico_multicore tinyusb_pico_pio_usb pico_stdlib)
+
 if(DEFINED PICO_BOARD)
 if(${PICO_BOARD} MATCHES "pico_w")
 message("board is pico_w")
 # add additional compile and link options
-target_compile_options(${target_proj} PRIVATE -DRPPICOMIDI_PICO_W)
+target_compile_definitions(${target_proj} PRIVATE RPPICOMIDI_PICO_W=1)
 target_link_libraries(${target_proj} pico_cyw43_arch_none)
 set(RPPICOMIDI_PICO_W 1)
 else()
