@@ -17,7 +17,6 @@
  any redistribution
 *********************************************************************/
 
-// pio-usb is required for rp2040 host
 #include "pio_usb.h"
 #define HOST_PIN_DP   16   // Pin used as D+ for host, D- = D+ + 1
 
@@ -41,8 +40,6 @@ uint8_t midi_dev_addr = 0;
 // the setup function runs once when you press reset or power the board
 void setup()
 {
-  Serial1.begin(115200);
-
   Serial.begin(115200);
   delay(2000);   // wait for native usb
 
@@ -116,13 +113,9 @@ void setup1() {
   pio_cfg.pin_dp = HOST_PIN_DP;
  
  #if defined(ARDUINO_RASPBERRY_PI_PICO_W)
-  /* https://github.com/sekigon-gonnoc/Pico-PIO-USB/issues/46 */
-  pio_cfg.sm_tx      = 3;
-  pio_cfg.sm_rx      = 2;
-  pio_cfg.sm_eop     = 3;
+  /* Need to swap PIOs so PIO code from CYW43 PIO SPI driver will fit */
   pio_cfg.pio_rx_num = 0;
   pio_cfg.pio_tx_num = 1;
-  pio_cfg.tx_ch      = 9;
  #endif /* ARDUINO_RASPBERRY_PI_PICO_W */
  
   USBHost.configure_pio_usb(1, &pio_cfg);
