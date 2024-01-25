@@ -127,8 +127,8 @@ power pins on the Pico board as follows:
 ```
 Pico/Pico W board pin   USB A connector pin
 23 (or any GND pin)  ->     GND
-21 (GP2)             ->     D+  (via a 22 ohm resistor should improve things)
-22 (GP3)             ->     D-  (via a 22 ohm resistor should improve things)
+21 (GP16)            ->     D+  (via a 22 ohm resistor should improve things)
+22 (GP17)            ->     D-  (via a 22 ohm resistor should improve things)
 40 (VBus)            ->     VBus (safer if it has current limiting on the pin)
 ```
 I use a low-cost USB breakout board and solder the 22 ohm resistors to cut
