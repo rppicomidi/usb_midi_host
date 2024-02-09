@@ -39,13 +39,13 @@
   #define CFG_TUH_MAX_CABLES 16
 #endif
 #ifndef CFG_TUH_MIDI_RX_BUFSIZE
-  #define CFG_TUH_MIDI_RX_BUFSIZE 64
+  #define CFG_TUH_MIDI_RX_BUFSIZE USBH_EPSIZE_BULK_MAX
 #endif
 #ifndef CFG_TUH_MIDI_TX_BUFSIZE
-  #define CFG_TUH_MIDI_TX_BUFSIZE 64
+  #define CFG_TUH_MIDI_TX_BUFSIZE USBH_EPSIZE_BULK_MAX
 #endif
 #ifndef CFG_TUH_MIDI_EP_BUFSIZE
-  #define CFG_TUH_MIDI_EP_BUFSIZE 64
+  #define CFG_TUH_MIDI_EP_BUFSIZE USBH_EPSIZE_BULK_MAX
 #endif
 
 #define MIDI_MAX_DATA_VAL 0x7f
@@ -384,7 +384,7 @@ bool midih_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const *d
     }
     else if (p_mdh->bDescriptorType == TUSB_DESC_CS_ENDPOINT)
     {
-      TU_LOG2("found CS_ENDPOINT Descriptor for %u\r\n", prev_ep_addr);
+      TU_LOG2("found CS_ENDPOINT Descriptor for %02x\r\n", prev_ep_addr);
       TU_VERIFY(prev_ep_addr != 0);
       // parse out the mapping between the device's embedded jacks and the endpoints
       // Each embedded IN jack is assocated with an OUT endpoint
@@ -430,8 +430,12 @@ bool midih_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const *d
     }
     else if (p_mdh->bDescriptorType == TUSB_DESC_ENDPOINT) {
       // parse out the bulk endpoint info
-      tusb_desc_endpoint_t const *p_ep = (tusb_desc_endpoint_t const *)p_mdh;
-      TU_LOG2("found ENDPOINT Descriptor for %u\r\n", p_ep->bEndpointAddress);
+      tusb_desc_endpoint_t *p_ep = (tusb_desc_endpoint_t *)p_mdh;
+      TU_LOG2("found ENDPOINT Descriptor %02x\r\n", p_ep->bEndpointAddress);
+      if (p_ep->wMaxPacketSize > USBH_EPSIZE_BULK_MAX) {
+        TU_LOG2("ENDPOINT %02x wMaxPacketSize shorted from %u to %u\r\n", p_ep->bEndpointAddress, p_ep->wMaxPacketSize, USBH_EPSIZE_BULK_MAX);
+        p_ep->wMaxPacketSize = USBH_EPSIZE_BULK_MAX;
+      }
       if (tu_edpt_dir(p_ep->bEndpointAddress) == TUSB_DIR_OUT)
       {
         TU_VERIFY(p_midi_host->ep_out == 0);
