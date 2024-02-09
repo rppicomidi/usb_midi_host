@@ -7,6 +7,9 @@ processor with USB Host Bulk endpoint support, but the driver and
 example code have only been tested on a RP2040 in a Raspberry Pi
 Pico board.
 
+By default, this driver supports up to 4 USB MIDI devices connected
+through a USB hub, or a single device that may or may not be connected
+through a hub.
 # ACKNOWLEDGEMENTS
 The application driver code is based on code that rppicomidi submitted
 to TinyUSB as pull request #1219. The pull request was never merged and
@@ -357,9 +360,60 @@ of notes from B-flat to D. If your device is Mackie Control compatible, then
 the transport LEDs should sequence. If you use a control on your MIDI device, you
 should see the message traffic displayed on the Serial Port Monitor.
 
-# CONFIGURATION and DESIGN DETAILS
+# TROUBLESHOOTING, CONFIGURATION, and DESIGN DETAILS
+## Config (Configuration) File
+In C/C++, the config file for your project is called `tusb_config.h`.
+It should be in the include path of your project.
+
+In Arduino code,the config file is stored in the `libraries` directory of
+your sketch directory as the file
+`Adafruit_TinyUSB/src/arduino/ports/${target}/tusb_config_${target}.h`,
+where `${target}` is the processor name of the processor on the target
+hardware. For example, for a Rapsberry Pi Pico board, the file is
+`libraries/Adafruit_TinyUSB/src/arduino/ports/rp2040/tusb_config_rp2040.h`.
+Sadly, any changes you make to the config file will disappear if you update
+`Adafruit_TinyUSB_Library`.
+## Size of the Enumeration Buffer
+When the USB Host driver tries to enumerate a device, it reads the
+USB descriptors into a byte buffer. By default, that buffer is 256 bytes
+long. Complete MIDI devices, or device that also have audio interfaces,
+tend to have much longer USB descriptors. If a device fails to enumerate,
+locate the line in your config file that contains `#define CFG_TUH_ENUMERATION_BUFSIZE` and change the default 256 to something larger
+(for example, 512).
+## Debug Log
+If a device fails to enumerate, a debug log printout may be helpful.
+Debug log levels go from 0 (no debug logging) to 3 (very verbose). The
+default log level is 0. The most direct way to set the debug level is to
+define `CFG_TUSB_DEBUG` in your config file. For example, to set the log
+level to 2, make sure your config file contains the lines
+```
+#ifndef CFG_TUSB_DEBUG
+#define CFG_TUSB_DEBUG 2
+#endif
+```
+The conditional is in case you choose to change the debug level by
+setting an environment variable.
+
+### Bug #384 in RP2040/Raspberry Pi Pico and Adafruit_TinyUSB_Library 3.0
+For Arduino, the `Adafruit TinyUSB Host` option seems to require you to define
+the function `log_printf` if you use a debug log level other than 0. Adding
+the following function to your program sketch should suffice as long as none
+of the debug log output lines is longer than 256 bytes.
+```
+// Debugging
+int log_printf(const char * format, ...)
+{
+  char outstr[256];
+  va_list va;
+  va_start(va, format);
+  int ret = vsprintf(outstr, format, va);
+  // Uncomment the next line to send the debug log to the Serial1 output
+  return Serial1.print(outstr);
+}
+```
+
 ## Maximum Number of MIDI Devices Attached to the Host
-You should define the value `CFG_TUH_DEVICE_MAX` in tusb_config.h to
+You should define the value `CFG_TUH_DEVICE_MAX` in the config file to
 match the number of USB hub ports attached to the USB host port. For
 example
 ```
