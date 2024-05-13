@@ -44,8 +44,13 @@ uint8_t midi_dev_addr = 0;
 void setup()
 {
   Serial1.begin(115200); // All console prints go to UART0
+  while (!Serial1) {
+    delay(100);   // wait for serial port to initialize
+  }
+  // Optionally, configure the buffer sizes here
+  // The commented out code shows the default values
+  // tuh_midih_define_limits(64, 64, 16);
 
-  delay(2000);   // wait for native usb
   USBHost.begin(0); // 0 means use native RP2040 host
 
   Serial1.println("TinyUSB MIDI Host Example");

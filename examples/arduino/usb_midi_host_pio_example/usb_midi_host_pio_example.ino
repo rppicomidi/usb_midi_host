@@ -41,7 +41,9 @@ uint8_t midi_dev_addr = 0;
 void setup()
 {
   Serial.begin(115200);
-  delay(2000);   // wait for native usb
+  while (!Serial) {
+    delay(100);   // wait for native usb
+  }
 
   Serial.println("TinyUSB MIDI Host Example");
 }
@@ -97,7 +99,9 @@ void loop()
 
 // core1's setup
 void setup1() {
-  delay(2000);   // wait for native usb
+  while (!Serial) {
+    delay(100);   // wait for native usb
+  }
   Serial.println("Core1 setup to run TinyUSB host with pio-usb");
 
   // Check for CPU frequency, must be multiple of 120Mhz for bit-banging USB
@@ -119,6 +123,10 @@ void setup1() {
  #endif /* ARDUINO_RASPBERRY_PI_PICO_W */
  
   USBHost.configure_pio_usb(1, &pio_cfg);
+
+  // Optionally, configure the buffer sizes here
+  // The commented out code shows the default values
+  // tuh_midih_define_limits(64, 64, 16);
 
   // run host stack on controller (rhport) 1
   // Note: For rp2040 pico-pio-usb, calling USBHost.begin() on core1 will have most of the
