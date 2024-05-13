@@ -36,38 +36,55 @@
 //--------------------------------------------------------------------+
 // Class Driver Configuration
 //--------------------------------------------------------------------+
-
-// TODO Highspeed bulk transfer can be up to 512 bytes
-#ifndef CFG_TUH_HID_EPIN_BUFSIZE
-#define CFG_TUH_HID_EPIN_BUFSIZE 64
-#endif
-
-#ifndef CFG_TUH_HID_EPOUT_BUFSIZE
-#define CFG_TUH_HID_EPOUT_BUFSIZE 64
-#endif
+// Use this function in Arduino or other environments where modifying
+// the tusb_config.h file is not practical.
+// Call this before midih_init() gets called by the TinyUSB stack,
+// which is before the application calls tusb_init() or tuh_init().
+//
+// Note: To figure out how long a USB MIDI 1.0 stream needs to be
+// in bytes, multiply the number of bytes in the stream by 4/3 and
+// round up to the nearest 4 bytes.
+// For exampe, to send a 146 byte SysEx message, 146*4/3 = 194.66...
+// The next nearest 4 byte boundary is 196. So the buffer is 196 bytes,
+// or 49 4-byte USB MIDI packets.
+//
+// Parameters:
+// midi_rx_buffer_bytes is the number of bytes the USB Host can buffer
+// from the device. This has to be at least equal to the maximum bulk
+// transfer size of 64 bytes, but it is a good idea to set this to
+// at least the maximum SysEx message size in MIDI packets to improve
+// throughput.
+//
+// midi_tx_buffer_bytes is the maximum number of bytes the application
+// can write out to the interface in a single transaction. This should
+// be at least as large as the maximum bulk transfer size of 64 bytes.
+// To send long SysEx messages, you should make this buffer at least as
+// long as the longest message in MIDI packets or else SysEx message
+// writes may get truncated.
+//
+// max_cables defaults to 16. If you know you only need to convert
+// serial MIDI data to USB MIDI packets from cable numbers 0:N,
+// and N is less than 15, you can save a small amount
+// if RAM if you set this value to something less than 16.
+// For example, if your application is to convert a single
+// Serial Port MIDI to USB, then the highest cable number
+// is 0, so you only need one virtual cable. You will save the
+// deserialization buffer for 15 virtual cables (about 90 bytes).
+//
+void tuh_midih_define_limits(size_t midi_rx_buffer_bytes, size_t midi_tx_buffer_bytes, uint8_t max_cables);
 
 #ifndef CFG_MIDI_HOST_DEVSTRINGS
+#ifdef ARDUINO
+#define CFG_MIDI_HOST_DEVSTRINGS 1
+#else
 #define CFG_MIDI_HOST_DEVSTRINGS 0
 #endif
-
-// If you know you only need to convert serial MIDI
-// data to USB MIDI packets from cable numbers 0:N,
-// and N is less than 15, you can save a small amount
-// if RAM if you add the line
-// #define CFG_TUH_CABLE_MAX (N+1)
-// to tusb_config.h
-// For example, if your application is to convert
-// Serial Port MIDI to USB, then the highest cable number
-// is 0, N+1 is 1. You will save the deserialization buffer
-// for 15 virtual cables (about 90 bytes) by adding
-// #define CFG_TUH_CABLE_MAX 1
-// to tusb_config.h
-#ifndef CFG_TUH_CABLE_MAX
-#define CFG_TUH_CABLE_MAX 16
 #endif
+
 //--------------------------------------------------------------------+
 // Application API (Single Interface)
 //--------------------------------------------------------------------+
+
 bool     tuh_midi_configured      (uint8_t dev_addr);
 
 // return the number of virtual midi cables on the device's OUT endpoint

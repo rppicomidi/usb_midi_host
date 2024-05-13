@@ -31,7 +31,7 @@
 #include "host/usbh_pvt.h"
 
 #include "usb_midi_host.h"
-
+#include <stdlib.h>
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF
 //--------------------------------------------------------------------+
@@ -49,6 +49,11 @@
 #endif
 
 #define MIDI_MAX_DATA_VAL 0x7f
+struct midih_limits_s {
+    size_t midi_rx_buf;
+    size_t midi_tx_buf;
+    uint8_t max_cables;
+} midih_limits = {CFG_TUH_MIDI_RX_BUFSIZE, CFG_TUH_MIDI_TX_BUFSIZE, CFG_TUH_MAX_CABLES};
 
 // This descriptor follows the standard bulk data endpoint descriptor
 typedef struct
@@ -74,8 +79,8 @@ typedef struct
 
   uint8_t ep_in;          // IN endpoint address
   uint8_t ep_out;         // OUT endpoint address
-  uint16_t ep_in_max;     // min( CFG_TUH_MIDI_RX_BUFSIZE, wMaxPacketSize of the IN endpoint)
-  uint16_t ep_out_max;    //  min( CFG_TUH_MIDI_TX_BUFSIZE, wMaxPacketSize of the OUT endpoint)
+  uint16_t ep_in_max;     // min( midih_limits.midi_rx_buf, wMaxPacketSize of the IN endpoint)
+  uint16_t ep_out_max;    //  min( midih_limits.midi_tx_buf, wMaxPacketSize of the OUT endpoint)
 
   uint8_t num_cables_rx;  // IN endpoint CS descriptor bNumEmbMIDIJack value
   uint8_t num_cables_tx;  // OUT endpoint CS descriptor bNumEmbMIDIJack value
@@ -83,7 +88,7 @@ typedef struct
   // For Stream read()/write() API
   // Messages are always 4 bytes long, queue them for reading and writing so the
   // callers can use the Stream interface with single-byte read/write calls.
-  midi_stream_t stream_write[CFG_TUH_CABLE_MAX];
+  midi_stream_t *stream_write;
   midi_stream_t stream_read;
 
   /*------------- From this point, data is not cleared by bus reset -------------*/
@@ -92,8 +97,8 @@ typedef struct
   tu_fifo_t tx_ff;
  
 
-  uint8_t rx_ff_buf[CFG_TUH_MIDI_RX_BUFSIZE];
-  uint8_t tx_ff_buf[CFG_TUH_MIDI_TX_BUFSIZE];
+  uint8_t *rx_ff_buf;
+  uint8_t *tx_ff_buf;
 
   #if CFG_FIFO_MUTEX
   osal_mutex_def_t rx_ff_mutex;
@@ -145,6 +150,13 @@ static uint32_t write_flush(uint8_t dev_addr, midih_interface_t* midi);
 //--------------------------------------------------------------------+
 // USBH API
 //--------------------------------------------------------------------+
+void tuh_midih_define_limits(size_t midi_rx_buffer_bytes, size_t midi_tx_buffer_bytes, uint8_t max_cables)
+{
+  midih_limits.midi_rx_buf = midi_rx_buffer_bytes;
+  midih_limits.midi_tx_buf = midi_tx_buffer_bytes;
+  midih_limits.max_cables = max_cables;
+}
+
 void midih_init(void)
 {
   tu_memclr(&_midi_host, sizeof(_midi_host));
@@ -152,8 +164,17 @@ void midih_init(void)
   for (int inst = 0; inst < CFG_TUH_DEVICE_MAX; inst++)
   {
     midih_interface_t *p_midi_host = &_midi_host[inst];
-    tu_fifo_config(&p_midi_host->rx_ff, p_midi_host->rx_ff_buf, CFG_TUH_MIDI_RX_BUFSIZE, 1, false); // true, true
-    tu_fifo_config(&p_midi_host->tx_ff, p_midi_host->tx_ff_buf, CFG_TUH_MIDI_TX_BUFSIZE, 1, false); // OBVS.
+    p_midi_host->rx_ff_buf = malloc(midih_limits.midi_rx_buf);
+    p_midi_host->tx_ff_buf = malloc(midih_limits.midi_tx_buf);
+    p_midi_host->stream_write = calloc(midih_limits.max_cables, sizeof(midi_stream_t));
+    if (p_midi_host->rx_ff_buf == NULL || p_midi_host->tx_ff_buf == NULL || p_midi_host->stream_write == NULL)
+    {
+      _MESS_FAILED();
+      TU_BREAKPOINT();
+      return;
+    }
+    tu_fifo_config(&p_midi_host->rx_ff, p_midi_host->rx_ff_buf, midih_limits.midi_rx_buf, 1, false); // true, true
+    tu_fifo_config(&p_midi_host->tx_ff, p_midi_host->tx_ff_buf, midih_limits.midi_tx_buf, 1, false); // OBVS.
 
   #if CFG_FIFO_MUTEX
     tu_fifo_config_mutex(&p_midi_host->rx_ff, NULL, osal_mutex_create(&p_midi_host->rx_ff_mutex));
@@ -442,8 +463,8 @@ bool midih_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const *d
         TU_VERIFY(p_midi_host->num_cables_tx == 0);
         p_midi_host->ep_out = p_ep->bEndpointAddress;
         p_midi_host->ep_out_max = p_ep->wMaxPacketSize;
-        if (p_midi_host->ep_out_max > CFG_TUH_MIDI_TX_BUFSIZE)
-          p_midi_host->ep_out_max = CFG_TUH_MIDI_TX_BUFSIZE;
+        if (p_midi_host->ep_out_max > midih_limits.midi_tx_buf)
+          p_midi_host->ep_out_max = midih_limits.midi_tx_buf;
         prev_ep_addr = p_midi_host->ep_out;
         out_desc = p_ep;
       }
@@ -453,8 +474,8 @@ bool midih_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const *d
         TU_VERIFY(p_midi_host->num_cables_rx == 0);
         p_midi_host->ep_in = p_ep->bEndpointAddress;
         p_midi_host->ep_in_max = p_ep->wMaxPacketSize;
-        if (p_midi_host->ep_in_max > CFG_TUH_MIDI_RX_BUFSIZE)
-          p_midi_host->ep_in_max = CFG_TUH_MIDI_RX_BUFSIZE;
+        if (p_midi_host->ep_in_max > midih_limits.midi_rx_buf)
+          p_midi_host->ep_in_max = midih_limits.midi_rx_buf;
         prev_ep_addr = p_midi_host->ep_in;
         in_desc = p_ep;
       }
@@ -555,7 +576,7 @@ uint32_t tuh_midi_stream_write (uint8_t dev_addr, uint8_t cable_num, uint8_t con
   midih_interface_t *p_midi_host = get_midi_host(dev_addr);
   TU_VERIFY(p_midi_host != NULL);
   TU_VERIFY(cable_num < p_midi_host->num_cables_tx);
-  TU_VERIFY(cable_num < CFG_TUH_CABLE_MAX);
+  TU_VERIFY(cable_num < midih_limits.max_cables);
   midi_stream_t *stream = &p_midi_host->stream_write[cable_num];
 
   uint32_t i = 0;

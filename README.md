@@ -256,15 +256,21 @@ tuh_midi_get_all_istrings()
 You can then use the TinyUSB API for retrieving a device string
 by string index to get the UTF-16LE string.
 
-NOTE: To save space and to speed up enumeration, by default,
-`CFG_MIDI_HOST_DEVSTRINGS` is set to 0, so the MIDI Device
-String API is disabled by default. If you want to use the MIDI
-Device String API, please add, either before you include this
-library, or to your C/C++ application project `tusb_config.h`
+NOTE: For non-Arduino builds, to save space and to speed up
+enumeration, by default, `CFG_MIDI_HOST_DEVSTRINGS` is set to 0,
+so the MIDI Device String API is disabled by default. If you want
+to use the MIDI Device String API, please add, either before you
+include this library, or to your C/C++ application project `tusb_config.h`
 ```
 #define CFG_MIDI_HOST_DEVSTRINGS 1
 ```
-
+For Arduino builds, because the Arduino IDE does not allow letting library
+files include files from the sketch directory, the default is to enable the
+MIDI Device String API. Disabling it requires adding
+```
+#define  CFG_MIDI_HOST_DEVSTRINGS 0
+```
+in the library file `usb_midi_host.h`.
 ## Arduino MIDI Library API
 This library API is designed to be relatively low level and is well
 suited for applications that require the application to touch
@@ -373,6 +379,10 @@ hardware. For example, for a Rapsberry Pi Pico board, the file is
 `libraries/Adafruit_TinyUSB/src/arduino/ports/rp2040/tusb_config_rp2040.h`.
 Sadly, any changes you make to the config file will disappear if you update
 `Adafruit_TinyUSB_Library`.
+
+To make configuring parameters specific to the USB MIDI Host a bit simpler
+for Arduino IDE users, see the function `tuh_midih_define_limits()`.
+
 ## Size of the Enumeration Buffer
 When the USB Host driver tries to enumerate a device, it reads the
 USB descriptors into a byte buffer. By default, that buffer is 256 bytes
@@ -413,13 +423,15 @@ int log_printf(const char * format, ...)
 ```
 
 ## Maximum Number of MIDI Devices Attached to the Host
-You should define the value `CFG_TUH_DEVICE_MAX` in the config file to
+You should define the value `CFG_TUH_DEVICE_MAX` in the tuh_config.h file to
 match the number of USB hub ports attached to the USB host port. For
 example
 ```
 // max device support (excluding hub device)
 #define CFG_TUH_DEVICE_MAX          (CFG_TUH_HUB ? 4 : 1) // hub typically has 4 ports
 ```
+The Arduino IDE makes configuring this is difficult because tuh_config.h is part
+of the processor core (for RP2040, anyway)
 
 ## Maximum Number of USB Endpoints
 Although the USB MIDI 1.0 Class specification allows an arbitrary number
@@ -440,6 +452,9 @@ particular virtual cable. To properly handle all 16 possible virtual cables,
 `CFG_TUH_DEVICE_MAX*16*6` data bytes are required. If the application
 needs to save memory, in file `tusb_cfg.h` set `CFG_TUH_CABLE_MAX` to
 something less than 16 as long as it is at least 1.
+
+For Arduino builds, you can configure this parameter at runtime by calling
+tuh_midih_define_limits().
 
 ## Subclass of Audio Control
 A MIDI device is supposed to have an Audio Control Interface, before
