@@ -183,7 +183,7 @@ void tuh_midih_define_limits(size_t midi_rx_buffer_bytes, size_t midi_tx_buffer_
   midih_limits.max_cables = max_cables;
 }
 
-void midih_init(void)
+bool midih_init(void)
 {
   tu_memclr(&_midi_host, sizeof(_midi_host));
   // config fifos
@@ -203,8 +203,14 @@ void midih_init(void)
     tu_fifo_config_mutex(&p_midi_host->tx_ff, osal_mutex_create(&p_midi_host->tx_ff_mutex), NULL);
   #endif
   }
+  return true;
 }
 
+bool midih_deinit()
+{
+  midih_freeall();
+  return true;
+}
 bool midih_xfer_cb(uint8_t dev_addr, uint8_t ep_addr, xfer_result_t result, uint32_t xferred_bytes)
 {
   (void)result;
