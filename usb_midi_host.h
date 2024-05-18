@@ -40,6 +40,7 @@
 // the tusb_config.h file is not practical.
 // Call this before midih_init() gets called by the TinyUSB stack,
 // which is before the application calls tusb_init() or tuh_init().
+// Calling this function after midih_init() will cause problems.
 //
 // Note: To figure out how long a USB MIDI 1.0 stream needs to be
 // in bytes, multiply the number of bytes in the stream by 4/3 and

@@ -49,7 +49,7 @@
 #endif
 
 #define MIDI_MAX_DATA_VAL 0x7f
-struct midih_limits_s {
+static struct midih_limits_s {
     size_t midi_rx_buf;
     size_t midi_tx_buf;
     uint8_t max_cables;
@@ -147,11 +147,37 @@ static midih_interface_t *get_midi_host(uint8_t dev_addr)
 //------------- Internal prototypes -------------//
 static uint32_t write_flush(uint8_t dev_addr, midih_interface_t* midi);
 
+static void midih_freeall(void)
+{
+  // free memory allocated by midih_init()
+  for (int inst = 0; inst < CFG_TUH_DEVICE_MAX; inst++)
+  {
+    midih_interface_t *p_midi_host = &_midi_host[inst];
+    if (p_midi_host->rx_ff_buf != NULL)
+    {
+      free (p_midi_host->rx_ff_buf);
+      p_midi_host->rx_ff_buf = NULL;
+    }
+    if (p_midi_host->tx_ff_buf != NULL)
+    {
+      free (p_midi_host->tx_ff_buf);
+      p_midi_host->tx_ff_buf = NULL;
+    }
+    if (p_midi_host->stream_write != NULL)
+    {
+      free(p_midi_host->stream_write);
+      p_midi_host->stream_write = NULL;
+    }
+  }
+}
+
 //--------------------------------------------------------------------+
 // USBH API
 //--------------------------------------------------------------------+
 void tuh_midih_define_limits(size_t midi_rx_buffer_bytes, size_t midi_tx_buffer_bytes, uint8_t max_cables)
 {
+  // prevent memory leak in case midih_init() was called before this function
+  midih_freeall();
   midih_limits.midi_rx_buf = midi_rx_buffer_bytes;
   midih_limits.midi_tx_buf = midi_tx_buffer_bytes;
   midih_limits.max_cables = max_cables;
@@ -166,13 +192,9 @@ void midih_init(void)
     midih_interface_t *p_midi_host = &_midi_host[inst];
     p_midi_host->rx_ff_buf = malloc(midih_limits.midi_rx_buf);
     p_midi_host->tx_ff_buf = malloc(midih_limits.midi_tx_buf);
-    p_midi_host->stream_write = calloc(midih_limits.max_cables, sizeof(midi_stream_t));
-    if (p_midi_host->rx_ff_buf == NULL || p_midi_host->tx_ff_buf == NULL || p_midi_host->stream_write == NULL)
-    {
-      _MESS_FAILED();
-      TU_BREAKPOINT();
-      return;
-    }
+    p_midi_host->stream_write = malloc(midih_limits.max_cables * sizeof(midi_stream_t));
+    TU_ASSERT((p_midi_host->rx_ff_buf != NULL && p_midi_host->tx_ff_buf != NULL && p_midi_host->stream_write != NULL), 0);
+    tu_memclr(p_midi_host->stream_write, sizeof(*(p_midi_host->stream_write))*midih_limits.max_cables);
     tu_fifo_config(&p_midi_host->rx_ff, p_midi_host->rx_ff_buf, midih_limits.midi_rx_buf, 1, false); // true, true
     tu_fifo_config(&p_midi_host->tx_ff, p_midi_host->tx_ff_buf, midih_limits.midi_tx_buf, 1, false); // OBVS.
 
@@ -262,7 +284,7 @@ void midih_close(uint8_t dev_addr)
   p_midi_host->dev_addr = 255; // invalid
   p_midi_host->configured = false;
   tu_memclr(&p_midi_host->stream_read, sizeof(p_midi_host->stream_read));
-  tu_memclr(&p_midi_host->stream_write, sizeof(p_midi_host->stream_write));
+  tu_memclr(p_midi_host->stream_write, sizeof(p_midi_host->stream_write)*midih_limits.max_cables);
 }
 
 //--------------------------------------------------------------------+
