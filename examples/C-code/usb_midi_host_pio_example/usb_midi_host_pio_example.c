@@ -122,6 +122,9 @@ void core1_main() {
     pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
     // Use GP16 for USB D+ and GP17 for USB D-
     pio_cfg.pin_dp = 16;
+    // Change the next line to #if 1 if you are using Pico_PIO_USB
+    // library version 0.5.3 or older on a Pico W board.
+    #if 0
     // Swap PIOs from default. The RX state machine takes up the
     // whole PIO program memory. Without these two lines, if you
     // try to use this code on a Pico W board, the CYW43 SPI PIO
@@ -133,6 +136,7 @@ void core1_main() {
     // cyw43_arch_init(), there should be no conflict.
     pio_cfg.pio_rx_num = 0;
     pio_cfg.pio_tx_num = 1;
+    #endif
     tuh_configure(BOARD_TUH_RHPORT, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
 
     tuh_init(BOARD_TUH_RHPORT);
