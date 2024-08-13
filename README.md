@@ -31,11 +31,65 @@ of application drivers returned by the `usbh_app_driver_get_cb()`
 function.
 
 ## Building C/C++ Applications
+
+### Basic Environment Setup
 Before you attempt to build any C/C++ applications, be sure
-you have the toolchain properly installed and can build and
+you have the toolchain properly installed and the `pico-sdk`
+installed. Please make sure you can build and
 run the blink example found in the [Getting Started Guide](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf).
+Version 2.0 or later of the `pico-sdk` offers the best support
+for this project
 
+### TinyUSB Library
+You will also need to make sure that the the TinyUSB library is installed.
+If there is nothing in the directory `pico-sdk/lib/tinyusb`, or
+the directory does not exist, please run the following commands
+```
+cd ${PICO_SDK_PATH}/pico-sdk
+git submodule update --recursive --init
+```
+### TinyUSB for Pre-Version 2.0 `pico-sdk`
+You will need a version of the TinyUSB library that supports
+USB Host Application drivers. This feature was introduced to TinyUSB on
+15-Aug-2023 with commit 7537985c080e439f6f97a021ce49f5ef48979c78
+which is release 0.16.0 or later. Version 2.0 of the `pico-sdk`, is
+compatible with this. Older versions are not.
 
+If you must use an older version of the of the `pico-sdk`, it ships
+configured to use TinyUSB 0.14 or earlier. You will need to update the
+TinyUSB library.  Please make sure you have a current TinyUSB code
+library in your pico-sdk by using the following commands:
+
+```
+cd ${PICO_SDK_PATH}/lib/tinyusb
+git fetch origin
+git checkout 525406597627fb9307425539b86dddf10278eca8
+```
+
+### `Pico-PIO-USB` Library
+If you are using the `Pico-PIO-USB` Library to implement the
+USB Host hardware (see the [HARDWARE](#hardware) section, below), install
+the Pico-PIO-USB Library. You must have the Python interpreter
+installed to run this command:
+```
+cd ${PICO_SDK_PATH}/lib/tinyusb/tools
+python3 get_deps.py rp2040
+```
+
+See the TinyUSB [Dependencies](https://docs.tinyusb.org/en/latest/reference/getting_started.html#dependencies) documentation for
+more information.
+
+If you are using the 2.0 version of `pico-sdk`, then you need to run the
+following commands. Version 2.0 of the `pico-sdk` broke the build of the
+`Pico-PIO-USB` library and there is no update yet to the `pico-sdk` to
+fix this.
+```
+cd ${PICO_SDK_PATH}/lib/tinyusb/hw/mcu/raspberry_pi/Pico-PIO-USB
+git fetch origin
+get checkout 7902e9fa8ed4a271d8d1d5e7e50516c2292b7bc2
+```
+
+### Building the `usb_midi_host` Library in Your Project
 The `CMakeLists.txt` file contains two `INTERFACE` libraries.
 If this driver is your only application USB host driver external
 to the TinyUSB stack, you should install this driver by
@@ -49,29 +103,6 @@ add the `usb_midi_host` library to your main application's
 See the files in `examples/C-code/usb_midi_host_example`
 or `examples/C-code/usb_midi_host_pio_example`
 for examples.
-
-NOTE: You will need a version of the TinyUSB library that supports
-USB Host Application drivers. This feature was introduced to TinyUSB on
-15-Aug-2023 with commit 7537985c080e439f6f97a021ce49f5ef48979c78
-which is release 0.16.0 or later. As of this writing, the `pico-sdk`
-version 1.5.1 ships with TinyUSB version 0.14.0. Please make
-sure you have the latest TinyUSB code library in your pico-sdk
-by using the following commands:
-
-```
-cd ${PICO_SDK_PATH}/lib/tinyusb
-git checkout master
-git pull
-```
-If you are using the Pico_PIO_USB Library to implement the
-USB Host hardware (see the Hardware section, below), install
-the Pico_PIO_USB Library. You must have the Python interpreter
-installed to run this command:
-```
-python tools/get_deps.py rp2040
-```
-See the TinyUSB [Dependencies](https://docs.tinyusb.org/en/latest/reference/getting_started.html#dependencies) documentation for
-more information.
 
 ## Building Arduino Applications
 Include this library, the Adafruit TinyUSB Arduino Library,
@@ -94,8 +125,9 @@ Tools->Debug Port->Serial
 ```
 
 If you are using the native RP2040 USB hardware to implement
-your USB Host hardware:
+your USB Host hardware, please configure the core as follows:
 ```
+Tools->Optimize: You can choose any option except Small (-Os) (Standard). I generally use Optimize Even More (-O3)
 Tools->CPU Speed->133 MHz (or faster, if you wish)
 Tools->USB Stack->"Adafruit TinyUSB Host"
 Tools->Debug Port->Serial1
@@ -117,12 +149,10 @@ connector. The RP2040-based boards offer two approaches.
 
 ## Software-based USB Host Port: Pico_PIO_USB Library
 The Pico_PIO_USB library, which works for both C/C++ and Arduino,
-uses the RP2040 PIO modules and CPU core 1 to to efficiently
+uses the RP2040 PIO 0 and CPU core 1 to to efficiently
 bit-bang a full-speed USB host port on 2 GPIO pins. Adafruit makes
 a [RP2040 board](https://www.adafruit.com/product/5723) that uses
-this method for USB Host. I have not tested this software
-on the Adafruit board, but I think the example programs in this
-library should work on it.
+this method for USB Host.
 
 If you are not using the Adafruit or similar board, you need to
 wire up something yourself. Wire a USB A jack to the GPIO and
@@ -132,10 +162,11 @@ Pico/Pico W board pin   USB A connector pin
 23 (or any GND pin)  ->     GND
 21 (GP16)            ->     D+  (via a 22 ohm resistor should improve things)
 22 (GP17)            ->     D-  (via a 22 ohm resistor should improve things)
+24 (GP18)            ->     TinyUSB drives this pin high to enable VBus on the Adafruit Feather board
 40 (VBus)            ->     VBus (safer if it has current limiting on the pin)
 ```
 I use a low-cost USB breakout board and solder the 22 ohm resistors to cut
-traces on the D+ and D- lines.
+traces on the D+ and D- lines. I leave GP18 unconnected.
 
 TODO Insert photos of my setup here.
 
@@ -145,22 +176,26 @@ a USB Host port, which, in an Arduino environment
 especially, is convenient. For example, the Arduino
 `Serial` object will work with the Serial Monitor
 console, and firmware update via the Arduino IDE
-is supported.
+is supported. 
+- If you need both a USB MIDI Host port
+and a USB MIDI Device port at the same time, you can
+do it. See the [pico-usb-midi-filter](https://github.com/rppicomidi/pico-usb-midi-filter),
+[pico-usb-midi-processor](https://github.com/rppicomidi/pico-usb-midi-processor),
+and [midi2piousbhub](https://github.com/rppicomidi/midi2piousbhub) projects
+for examples of this.
 - You can buy off-the-shelf hardware already wired
 to support a Host port using this method.
 
 The disadvantages of this approach are:
+- The RP2040 clock must run at a multiple of 120MHz. This
+  is a bit slower than the default of 133MHz.
 - It consumes 2 GPIO pins
-- The Pico_PIO_USB library consumes all of PIO1 and
-most of PIO0. Although it will still work, you have
-to fool with configuration to get the driver to
-coexist with the Pico W board radio module driver.
-- The RP2040 clock must run at a multiple of 120MHz
+- It consumes 1 PIO module
 - It consumes CPU 1
-- It takes code storage space and RAM space.
-
-To use this approach, make the Pico_PIO_USB library available
-to your application build.
+- It takes a bit more code storage space and RAM space.
+- The Pico_PIO_USB library can conflict with the drivers for the
+Pico W WiFi/Bluetooth module. To prevent the conflicts, please
+initialze the TinyUSB library before the WiFi/Bluetooth module lbiraries.
 
 ## RP2040 Native USB Hardware
 The RP2040 USB core natively supports a host mode that is
@@ -190,6 +225,10 @@ monitor to work.
 - Software update either requires you to unplug the OTG
 connector and connect the RP2040 in flash drive mode,
 or you have to use a Picoprobe or similar debug interface.
+- There appears to be a [bug in the RP2040 USB controller
+hardware](https://github.com/rppicomidi/usb_midi_host/issues/14)
+that prevents connection with the Arturia Beatstep Pro.
+Other MIDI hardware may have the same problem.
 
 NOTE: If you are using native USB hardware in USB Host mode
 for an Arduino project, please look at the note in the
@@ -299,8 +338,8 @@ program builds. If you are new to this, please see
 the [Getting Started Guide](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf) and build the blink example
 before you try this.
 
-Next, install the libraries as described in the Building C/C++
-Applications section.
+Next, install the libraries as described in the [Building C/C++
+Applications](#building-cc-applications) section.
 
 To build:
 
@@ -334,9 +373,11 @@ of notes from B-flat to D. If your device is Mackie Control compatible, then
 the transport LEDs should sequence. If you use a control on your MIDI device, you
 should see the message traffic displayed on the serial console.
 
-NOTE: Unfortunately, the pico-sdk does not currently allow you to use the
-USB device port and the PIO USB host port at the same time. All printf()
-output goes to the UART 0 serial port.
+NOTE: Unfortunately, the `pico-sdk` does not currently allow you to use the
+USB device port for console I/O and the PIO USB host port at the same time.
+You can install a [library](https://github.com/rppicomidi/cdc_stdio_lib)
+that lets you do this for you own projects. In these examples,
+all printf() output goes to the UART 0 serial port.
 
 NOTE: If you are using the Adafruit Feather board that supports USB host,
 you need to define `USE_ADAFRUIT_FEATHER_RP2040_USBHOST` in `tusb_config.h` or
@@ -367,6 +408,10 @@ the transport LEDs should sequence. If you use a control on your MIDI device, yo
 should see the message traffic displayed on the Serial Port Monitor.
 
 # TROUBLESHOOTING, CONFIGURATION, and DESIGN DETAILS
+In addition to this section, you might find
+[this guide](https://github.com/rppicomidi/pico_usb_host_troubleshooting)
+helpful.
+
 ## Config (Configuration) File
 In C/C++, the config file for your project is called `tusb_config.h`.
 It should be in the include path of your project.
