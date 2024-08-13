@@ -98,6 +98,10 @@
 // MIDI Host string support
 #define CFG_MIDI_HOST_DEVSTRINGS 1
 
+// This will work for the hardware described in the usb_midi_host project README.md
+// file and for the Adafruit RP2040 Feather with USB A Host board.
+#define USE_ADAFRUIT_FEATHER_RP2040_USBHOST
+
 #ifdef __cplusplus
  }
 #endif
