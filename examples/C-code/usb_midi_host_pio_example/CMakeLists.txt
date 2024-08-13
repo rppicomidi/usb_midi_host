@@ -24,7 +24,7 @@ target_include_directories(${target_proj} PRIVATE
 
 target_link_options(${target_proj} PRIVATE -Xlinker --print-memory-usage)
 target_compile_options(${target_proj} PRIVATE -Wall -Wextra)
-target_link_libraries(${target_proj} tinyusb_device tinyusb_host tinyusb_board usb_midi_host_app_driver 
+target_link_libraries(${target_proj} tinyusb_host tinyusb_board usb_midi_host_app_driver
   pico_multicore tinyusb_pico_pio_usb pico_stdlib)
 
 if(DEFINED PICO_BOARD)
