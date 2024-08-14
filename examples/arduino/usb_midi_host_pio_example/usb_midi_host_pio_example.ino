@@ -16,9 +16,35 @@
  All text above, and the splash screen below must be included in
  any redistribution
 *********************************************************************/
-
+#ifdef __OPTIMIZE_SIZE__
+#error "Please use the Tools->Optimize: Menu to choose any Optimize setting other than -Os"
+#endif
+#ifndef ARDUINO_ARCH_RP2040
+#error "This program only works with RP2040-based boards"
+#endif
+#if defined(USE_TINYUSB_HOST) || !defined(USE_TINYUSB)
+#error "Please use the Menu to select Tools->USB Stack: Adafruit TinyUSB"
+#endif
 #include "pio_usb.h"
-#define HOST_PIN_DP   16   // Pin used as D+ for host, D- = D+ + 1
+
+// The following definitions apply to the custom hardware decribed in the
+// README.md file for the usb_midi_host library and for the commercial
+// Adafruit RP2040 Feather with USB A Host board. If you have your own
+// hardware, please change the definitions below
+
+// Pin D+ for host, D- = D+ + 1
+#ifndef PIN_USB_HOST_DP
+#define PIN_USB_HOST_DP  16
+#endif
+
+// Pin for enabling Host VBUS. comment out if not used
+#ifndef PIN_5V_EN
+#define PIN_5V_EN        18
+#endif
+
+#ifndef PIN_5V_EN_STATE
+#define PIN_5V_EN_STATE  1
+#endif
 
 #include "Adafruit_TinyUSB.h"
 
@@ -45,7 +71,7 @@ void setup()
     delay(100);   // wait for native usb
   }
 
-  Serial.println("TinyUSB MIDI Host Example");
+  Serial.printf("TinyUSB MIDI Host Example\r\n");
 }
 
 static void send_next_note(bool connected)
@@ -102,7 +128,7 @@ void setup1() {
   while (!Serial) {
     delay(100);   // wait for native usb
   }
-  Serial.println("Core1 setup to run TinyUSB host with pio-usb");
+  Serial.printf("Core1 setup to run TinyUSB host with pio-usb\r\n");
 
   // Check for CPU frequency, must be multiple of 120Mhz for bit-banging USB
   uint32_t cpu_hz = clock_get_hz(clk_sys);
@@ -114,16 +140,22 @@ void setup1() {
   }
 
   pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
-  pio_cfg.pin_dp = HOST_PIN_DP;
+  pio_cfg.pin_dp = PIN_USB_HOST_DP;
  
+ // Change the next line to #if 1 if the Pico-PIO-USB library version is 0.5.3 or older.
+ #if 0
  #if defined(ARDUINO_RASPBERRY_PI_PICO_W)
   /* Need to swap PIOs so PIO code from CYW43 PIO SPI driver will fit */
   pio_cfg.pio_rx_num = 0;
   pio_cfg.pio_tx_num = 1;
  #endif /* ARDUINO_RASPBERRY_PI_PICO_W */
+ #endif
  
   USBHost.configure_pio_usb(1, &pio_cfg);
-
+#ifdef PIN_5V_EN
+  pinMode(PIN_5V_EN, OUTPUT);
+  digitalWrite(PIN_5V_EN, PIN_5V_EN_STATE);
+#endif
   // Optionally, configure the buffer sizes here
   // The commented out code shows the default values
   // tuh_midih_define_limits(64, 64, 16);
