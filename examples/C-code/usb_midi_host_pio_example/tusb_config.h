@@ -74,12 +74,6 @@
 #define CFG_TUH_ENABLED     1
 #define CFG_TUH_RPI_PIO_USB 1
 
-// If you are using a this board
-// https://learn.adafruit.com/adafruit-feather-rp2040-with-usb-type-a-host
-// Please uncomment the following line or else the power supply
-// for the USB A Host won't switch on when the program calls board_init()
-//#define USE_ADAFRUIT_FEATHER_RP2040_USBHOST 1
-
 // Size of buffer to hold descriptors and other data used for enumeration
 #define CFG_TUH_ENUMERATION_BUFSIZE 256
 
@@ -99,8 +93,9 @@
 #define CFG_MIDI_HOST_DEVSTRINGS 1
 
 // This will work for the hardware described in the usb_midi_host project README.md
-// file and for the Adafruit RP2040 Feather with USB A Host board.
-#define USE_ADAFRUIT_FEATHER_RP2040_USBHOST
+// file and for the Adafruit RP2040 Feather with USB A Host board (see
+// https://learn.adafruit.com/adafruit-feather-rp2040-with-usb-type-a-host)
+#define USE_ADAFRUIT_FEATHER_RP2040_USBHOST 1
 
 #ifdef __cplusplus
  }
