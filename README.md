@@ -52,7 +52,7 @@ git submodule update --recursive --init
 You will need a version of the TinyUSB library that supports
 USB Host Application drivers. This feature was introduced to TinyUSB on
 15-Aug-2023 with commit 7537985c080e439f6f97a021ce49f5ef48979c78
-which is release 0.16.0 or later. Version 2.0 of the `pico-sdk`, is
+which is release 0.16.0 or later. Version 2.0 of the `pico-sdk` is
 compatible with this. Older versions are not.
 
 If you must use an older version of the of the `pico-sdk`, it ships
@@ -69,8 +69,8 @@ git checkout 525406597627fb9307425539b86dddf10278eca8
 ### `Pico-PIO-USB` Library
 If you are using the `Pico-PIO-USB` Library to implement the
 USB Host hardware (see the [HARDWARE](#hardware) section, below), install
-the Pico-PIO-USB Library. You must have the Python interpreter
-installed to run this command:
+the `Pico-PIO-USB` Library. You must have the Python interpreter
+installed to run these commands:
 ```
 cd ${PICO_SDK_PATH}/lib/tinyusb/tools
 python3 get_deps.py rp2040
@@ -113,24 +113,25 @@ please copy this library code to a `usb_midi_host` directory
 under your sketech folder `libraries` directory.
 
 To build any Arduino application on the RP2040, you should
-install the Earle Philhower [arduino-pico](https://github.com/earlephilhower/arduino-pico) package for the Arduino IDE.
+install the Earle Philhower [arduino-pico](https://github.com/earlephilhower/arduino-pico) core for the Arduino IDE.
 
 You need to set up the board under the Tools Menu.
-If you are using the Pico_PIO_USB Library to implement your
+If you are using the `Pico-PIO-USB` Library to implement your
 USB Host hardware:
 ```
 Tools->CPU Speed->120 MHz (or 240 MHz (Overclock))
 Tools->USB Stack->"Adafruit TinyUSB"
 Tools->Debug Port->Serial
+Tools->Optimize: You can choose any option except Small (-Os) (Standard). I generally use Optimize Even More (-O3)
 ```
 
 If you are using the native RP2040 USB hardware to implement
 your USB Host hardware, please configure the core as follows:
 ```
-Tools->Optimize: You can choose any option except Small (-Os) (Standard). I generally use Optimize Even More (-O3)
 Tools->CPU Speed->133 MHz (or faster, if you wish)
 Tools->USB Stack->"Adafruit TinyUSB Host"
 Tools->Debug Port->Serial1
+Tools->Optimize: (Choose anything)
 ```
 NOTE: The USB Stack option "Adafruit TinyUSB Host" is not
 available in the `arduino-pico` package 3.6.2 and earlier.
@@ -138,8 +139,9 @@ You must install version 3.6.3 or later to make this option
 available.
 
 # HARDWARE
-The example programs have been tested on a Raspberry Pi Pico board.
-That board, like most RP2040-based boards, does not ship with a
+The example programs have been tested on a Raspberry Pi Pico board,
+a Pico W board, and an Adafruit RP2040 Feather with USB A Host board.
+The Pico boards, like most RP2040-based boards, do not ship with a
 USB Host friendly connector, and the development environments
 generally assume you are using the USB connector in Device mode
 to provide power to the board, and to allow software update, to
@@ -147,8 +149,8 @@ provide a serial port interface for a serial console monitor, etc.
 You will likely have to modify your board to add a USB Host interface
 connector. The RP2040-based boards offer two approaches.
 
-## Software-based USB Host Port: Pico_PIO_USB Library
-The Pico_PIO_USB library, which works for both C/C++ and Arduino,
+## Software-based USB Host Port: `Pico-PIO-USB` Library
+The `Pico-PIO-USB` library, which works for both C/C++ and Arduino,
 uses the RP2040 PIO 0 and CPU core 1 to to efficiently
 bit-bang a full-speed USB host port on 2 GPIO pins. Adafruit makes
 a [RP2040 board](https://www.adafruit.com/product/5723) that uses
@@ -183,14 +185,15 @@ do it. See the [pico-usb-midi-filter](https://github.com/rppicomidi/pico-usb-mid
 [pico-usb-midi-processor](https://github.com/rppicomidi/pico-usb-midi-processor),
 and [midi2piousbhub](https://github.com/rppicomidi/midi2piousbhub) projects
 for examples of this.
-- You can buy off-the-shelf hardware already wired
-to support a Host port using this method.
+- You can buy
+[off-the-shelf hardware](https://www.adafruit.com/product/5723)
+already wired to support a Host port using this method.
 
 The disadvantages of this approach are:
 - The RP2040 clock must run at a multiple of 120MHz. This
   is a bit slower than the default of 133MHz.
 - It consumes 2 GPIO pins
-- It consumes 1 PIO module
+- It consumes the PIO 0 module
 - It consumes CPU 1
 - It takes a bit more code storage space and RAM space.
 - The Pico_PIO_USB library can conflict with the drivers for the
@@ -210,8 +213,8 @@ how I test native hardware USB Host.
 TODO Insert photo of my setup here.
 
 The main advantages of this approach are
-- It does not consume 2 GPIO pins
-- It does not consume PIO0 and PIO1
+- It does not consume 3 GPIO pins
+- It does not consume PIO 0
 - It does not restrict CPU operating speed
 - It does not consume CPU 1
 - It does not need the memory the Pico_PIO_USB library uses
@@ -225,6 +228,9 @@ monitor to work.
 - Software update either requires you to unplug the OTG
 connector and connect the RP2040 in flash drive mode,
 or you have to use a Picoprobe or similar debug interface.
+- Depending on how you want to mount the development board, adapting
+the board's native USB connector to USB A may be harder than just
+soldering to a few GPIO pins.
 - There appears to be a [bug in the RP2040 USB controller
 hardware](https://github.com/rppicomidi/usb_midi_host/issues/14)
 that prevents connection with the Arturia Beatstep Pro.
@@ -341,18 +347,19 @@ before you try this.
 Next, install the libraries as described in the [Building C/C++
 Applications](#building-cc-applications) section.
 
-To build:
+To build via command line:
 
 ```
 cd examples/C-code/[example program directory name]
 mkdir build
-```
-To build
-```
 cd build
 cmake ..
 make
 ```
+
+Version 2.0 of the `pico-sdk` seems to prefer using VS Code for builds.
+See the [Getting Started Guide](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf) for information on building using VS Code.
+
 To test, first prepare your development board as described
 in the [Hardware](#hardware) section of this document. Next,
 copy the UF2 file to the Pico board using whatever
@@ -377,19 +384,19 @@ NOTE: Unfortunately, the `pico-sdk` does not currently allow you to use the
 USB device port for console I/O and the PIO USB host port at the same time.
 You can install a [library](https://github.com/rppicomidi/cdc_stdio_lib)
 that lets you do this for you own projects. In these examples,
-all printf() output goes to the UART 0 serial port.
-
-NOTE: If you are using the Adafruit Feather board that supports USB host,
-you need to define `USE_ADAFRUIT_FEATHER_RP2040_USBHOST` in `tusb_config.h` or
-else `board_init()` will not enable the USB Host power supply. `tusb_config.h`
-already has a line you can uncomment to make this work.
+all printf() output goes to the UART 0 serial port. If you want an
+example that uses this library and uses the native USB port for both
+MIDI device and console output, see the [midi2piousbhub](https://github.com/rppicomidi/midi2piousbhub) project.
 
 ## Building Arduino Examples
 To build and run the Arduino examples, in the Arduino IDE,
 use the Library Manager to install this library and accept
 all of its dependencies. If your hardware requires it,
-install the Pico PIO USB library too. Next, in the IDE,
+install the Pico PIO USB library too. Next, in the IDE, select
 File->Examples->usb_midi_host->arduino->[your example program name]
+
+Use the Arduino IDE to build and run the code. Make sure to start a serial
+monitor or else the code will appear to lock up.
 
 Attach a MIDI device to the USB A port.
 You should see something like this in the Serial Port Monitor (of course,
@@ -486,7 +493,7 @@ virtual cables. If a device has multiple IN endpoints or multiple OUT
 endpoints, it will fail to enumerate.
 
 Most USB MIDI devices contain both an IN endpoint and an OUT endpoint,
-but not all do. For example, some USB pedals only support an OUT endpoint.
+but not all do. For example, some USB pedals only support an IN endpoint.
 This driver allows that.
 
 ## Maximum Number of Virtual Cables
@@ -502,11 +509,12 @@ For Arduino builds, you can configure this parameter at runtime by calling
 tuh_midih_define_limits().
 
 ## Subclass of Audio Control
-A MIDI device is supposed to have an Audio Control Interface, before
-the MIDI Streaming Interface, but many commercial devices do not have one.
-To support these devices, the descriptor parser in this driver will skip
-past any audio control interface and audio streaming interface and open
-only the MIDI interface.
+A MIDI device is supposed to have an Audio Control Interface and it may
+have an Audio Streaming Interface before the the MIDI Streaming Interface,
+that this driver supports. Many commercial devices do not have even the
+Audio Control Interface. To support these devices, the descriptor parser
+in this driver will skip past Audio Control Interface and Audio Streaming
+Interface descriptors and open only the MIDI Interface.
 
 An audio streaming host driver can use this driver by passing a pointer
 to the MIDI interface descriptor that is found after the audio streaming
@@ -572,5 +580,8 @@ zero packets without reporting an error.
 ## Enumeration Failures
 The host may fail to enumerate a device if it has too many endpoints, if it has
 if it has a Standard MS Transfer Bulk Data Endpoint Descriptor (not supported),
-if it has a poorly formed descriptor, or if the descriptor is too long for
-the host to read the whole thing.
+if it has a poorly formed descriptor, or if the configuration
+descriptor is too long for the host to read the whole thing.
+The most common failure, though, is the descriptor is too long. See
+[Size of the Enumeration Buffer](#size-of-the-enumeration-buffer) for
+how to address that.
