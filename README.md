@@ -10,6 +10,15 @@ Pico board.
 By default, this driver supports up to 4 USB MIDI devices connected
 through a USB hub, or a single device that may or may not be connected
 through a hub.
+
+# Table of Contents
+- [ACKNOWLEDGEMENTS](#acknowledgements)
+- [BUILDING APPLICATIONS WITH THIS DRIVER](#building-applications-with-this-driver)
+- [HARDWARE](#hardware)
+- [API](#api)
+- [EXAMPLE PROGRAMS](#example-programs)
+- [TROUBLESHOOTING, CONFIGURATION, and DESIGN DETAILS](#troubleshooting-configuration-and-design-details)
+
 # ACKNOWLEDGEMENTS
 The application driver code is based on code that rppicomidi submitted
 to TinyUSB as pull request #1219. The pull request was never merged and
@@ -38,15 +47,23 @@ you have the toolchain properly installed and the `pico-sdk`
 installed. Please make sure you can build and
 run the blink example found in the [Getting Started Guide](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf).
 Version 2.0 or later of the `pico-sdk` offers the best support
-for this project
+for this project.
+
+### ${PICO_SDK_PATH}
+If you are following Chapter 3 of the [Getting Started Guide](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf),
+you installed VS Code and the Official Raspberry Pi Pico VS Code extension.
+The VS Code extension installed the `pico-sdk` in the
+`${HOME}/.pico-sdk/sdk/2.0.0` directory. If you followed the manual
+toolchain installation per Appendix C of the [Getting Started Guide](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf),
+then you installed the `pico-sdk` in `${HOME}/pico`.
 
 ### TinyUSB Library
 You will also need to make sure that the the TinyUSB library is installed.
-If there is nothing in the directory `pico-sdk/lib/tinyusb`, or
+If there is nothing in the directory `${PICO_SDK_PATH}/lib/tinyusb`, or
 the directory does not exist, please run the following commands
 ```
 cd ${PICO_SDK_PATH}/pico-sdk
-git submodule update --recursive --init
+git submodule update --init
 ```
 ### TinyUSB for Pre-Version 2.0 `pico-sdk`
 You will need a version of the TinyUSB library that supports
@@ -68,26 +85,39 @@ git checkout 525406597627fb9307425539b86dddf10278eca8
 
 ### `Pico-PIO-USB` Library
 If you are using the `Pico-PIO-USB` Library to implement the
-USB Host hardware (see the [HARDWARE](#hardware) section, below), install
-the `Pico-PIO-USB` Library. You must have the Python interpreter
-installed to run these commands:
+USB Host hardware (see the [HARDWARE](#hardware) section, below),
+you need to manually install the `Pico-PIO-USB` Library where
+TinyUSB can find it.
+
+TinyUSB provides python script that TinyUSB to install it, but the script
+in the version of TinyUSB that ships with `pico-sdk` version 2.0
+will install a version of the library that won't build with
+`pico-sdk` version 2.0. Use these commands instead.
+
 ```
-cd ${PICO_SDK_PATH}/lib/tinyusb/tools
-python3 get_deps.py rp2040
+cd ${PICO_SDK_PATH}/lib/tinyusb/hw/mcu
+mkdir -p raspberry_pi/Pico-PIO-USB
+cd raspberry_pi/Pico-PIO-USB
+git init
+git remote add origin https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
+git fetch --depth 1 origin 7902e9fa8ed4a271d8d1d5e7e50516c2292b7bc2
+git checkout FETCH_HEAD 
 ```
 
-See the TinyUSB [Dependencies](https://docs.tinyusb.org/en/latest/reference/getting_started.html#dependencies) documentation for
-more information.
+If you are using an older version of the `pico-sdk`, and you do not
+have python installed, please run the above but replace the `git fetch` line with
+```
+git fetch --depth 1 origin fe3b1e22436386f3b2be6c1c5f66658cbc32e1ba
+```
 
-If you are using the 2.0 version of `pico-sdk`, then you need to run the
-following commands. Version 2.0 of the `pico-sdk` broke the build of the
-`Pico-PIO-USB` library and there is no update yet to the `pico-sdk` to
-fix this.
+If you do have python installed and you are using an older pico-sdk,
+it is easier to run the Python script, see [Dependencies](https://docs.tinyusb.org/en/latest/reference/getting_started.html#dependencies).
 ```
-cd ${PICO_SDK_PATH}/lib/tinyusb/hw/mcu/raspberry_pi/Pico-PIO-USB
-git fetch origin
-get checkout 7902e9fa8ed4a271d8d1d5e7e50516c2292b7bc2
+cd ${PICO_SDK_PATH}/lib/tinyusb
+python3 tools/get_deps.py rp2040
 ```
+
+Hopefully, the `pico-sdk` will someday do all of this for you.
 
 ### Building the `usb_midi_host` Library in Your Project
 The `CMakeLists.txt` file contains two `INTERFACE` libraries.
@@ -241,9 +271,9 @@ for an Arduino project, please look at the note in the
 [Building Arduino Applications](#building-arduino-applications)
 section.
 
-## API
+# API
 
-### Connection Management
+## Connection Management
 There are two connection management functions every application must implement:
 - `tuh_midi_mount_cb()`
 - `tuh_midi_unmount_cb()`
@@ -260,7 +290,7 @@ When someone unplugs a MIDI device from the USB Host, this driver
 will call the `tuh_midi_unmount_cb()` function so the application
 can mark the previous device address as invalid.
 
-### MIDI Message Communication
+## MIDI Message Communication
 There is one function that every application that supports MIDI IN
 must implement
 - `tuh_midi_rx_cb()`
@@ -288,7 +318,7 @@ USB Bulk transfer (usually 64 bytes but sometimes only
 The `examples` folder contains both C-Code and Arduino
 code examples of how to use the API.
 
-### MIDI Device Strings API
+## MIDI Device Strings API
 A USB MIDI device can attach a string descriptor to any or
 all virtual MIDI cables. This driver can retrieve the indices
 to the strings using these functions:
@@ -316,6 +346,7 @@ MIDI Device String API. Disabling it requires adding
 #define  CFG_MIDI_HOST_DEVSTRINGS 0
 ```
 in the library file `usb_midi_host.h`.
+
 ## Arduino MIDI Library API
 This library API is designed to be relatively low level and is well
 suited for applications that require the application to touch
@@ -339,7 +370,7 @@ or the Pico_PIO_USB software USB Host (in directory with name
 `usb_midi_host_pio_example`).
 
 ## Building C-Code Examples
-First, set up your environment for command line pico-sdk
+First, set up your environment for command line `pico-sdk`
 program builds. If you are new to this, please see
 the [Getting Started Guide](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf) and build the blink example
 before you try this.
@@ -347,7 +378,8 @@ before you try this.
 Next, install the libraries as described in the [Building C/C++
 Applications](#building-cc-applications) section.
 
-To build via command line:
+### Command Line Build
+To build via command line (see Appendix C of the `Getting Started Guide`);
 
 ```
 cd examples/C-code/[example program directory name]
@@ -357,9 +389,26 @@ cmake ..
 make
 ```
 
-Version 2.0 of the `pico-sdk` seems to prefer using VS Code for builds.
-See the [Getting Started Guide](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf) for information on building using VS Code.
+### VS Code Build
+To build using VS Code, for Version 2.0 of the `pico-sdk`, import the project to VS Code.
+1. Click the `Raspberry Pi Pico Project` icon in the left toolbar.
+2. Click `Import Project`
+3. Chenge the Location to point to the `examples/C-code/[example program directory name]` directory
+4. Make sure Pico-SDK version is 2.0.0.
+5. Choose the Debugger and any advanced options
+6. Click Import
+7. Click the CMake icon in the left toolbar.
+8. Select the Delete Cache and Reconfigure Icon
+9. Under the `Configure` option, slect the Pico Kit.
+10. Choose whether you want `Debug`, `Release` or `RelWithDebugInfo`. The `MinSizeRel` option can cause issues, so do not choose it.
+11. Click Build
 
+If you are using an older version of the `pico-sdk`, then the project
+is already set up for VS Code. Just use the VS Code `File` menu to
+open the project. Select the toolchain when prompted, and use the
+CMake icon on the left toolbar to build the code (see steps 7-11, above).
+
+## Testing C-Code Examples
 To test, first prepare your development board as described
 in the [Hardware](#hardware) section of this document. Next,
 copy the UF2 file to the Pico board using whatever
@@ -388,7 +437,7 @@ all printf() output goes to the UART 0 serial port. If you want an
 example that uses this library and uses the native USB port for both
 MIDI device and console output, see the [midi2piousbhub](https://github.com/rppicomidi/midi2piousbhub) project.
 
-## Building Arduino Examples
+## Building and Testing Arduino Examples
 To build and run the Arduino examples, in the Arduino IDE,
 use the Library Manager to install this library and accept
 all of its dependencies. If your hardware requires it,
