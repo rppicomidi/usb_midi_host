@@ -23,6 +23,8 @@ target_include_directories(usb_midi_host_pio_example PRIVATE
 
 target_link_options(usb_midi_host_pio_example PRIVATE -Xlinker --print-memory-usage)
 target_compile_options(usb_midi_host_pio_example PRIVATE -Wall -Wextra)
+# uncomment the next line if you are using the Adafruit Feather with USB A Host board
+#target_compile_definitions(usb_midi_host_pio_example PRIVATE PICO_DEFAULT_LED_PIN=13)
 target_link_libraries(usb_midi_host_pio_example tinyusb_host tinyusb_board usb_midi_host_app_driver
   pico_multicore tinyusb_pico_pio_usb pico_stdlib)
 
