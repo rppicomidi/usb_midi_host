@@ -397,7 +397,7 @@ Type A Host board, you should replace `cmake ..` with
 If you don't do this, then the board will work right after you
 program it, and will not work on reset or reboot. If you are
 using any other board other than a Pico board, change
-`adafruit_feather_rp2040_usb_host` to the name of the
+`adafruit_feather_rp2040_usb_host` to the name of theUn
 file for your board (without the `.h` extension)
 found in `${PICO_SDK_PATH}/src/boards/include/boards`.
 
@@ -408,8 +408,13 @@ To build using VS Code, for Version 2.0 of the `pico-sdk`, import the project to
 3. Chenge the Location to point to the `examples/C-code/[example program directory name]` directory
 4. Make sure Pico-SDK version is 2.0.0.
 5. Choose the Debugger and any advanced options
-6. Click Import
+6. Click Import. If you are not using a Pico board and your Raspberry Pi
+   Pico Extenstion for VS Code is 0.15.2 or later, do this:
+    1. Click the Click the `Raspberry Pi Pico Project` icon in the left toolbar.
+    2. Under `Project` click `Switch Board`.
+    3. Find your board in the board list and click on the name.
 7. Click the CMake icon in the left toolbar. If you are not using a Pico board
+    and your Raspberry Pi Pico Extenstion for VS Code is 0.15.1 or earlier, do this:
     1. On the `PROJECT STATUS` line of the CMAKE window, click the `Open CMake Tool Extenstions Settings` gear icon. You have to mouse over
     the `PROJECT STATUS` line for the icon to appear.
     2. In the new Settings tab that opened in the editor pane, click the `Workspace` tab.
