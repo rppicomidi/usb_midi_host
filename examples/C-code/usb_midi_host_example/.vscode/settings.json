@@ -91,6 +91,11 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "cinttypes": "cpp",
-        "variant": "cpp"
-    }
+        "variant": "cpp",
+        "cyw43_arch.h": "c",
+        "usb_midi_host.h": "c"
+    },
+    "cmake.configureArgs": [
+        "-DPICO_BOARD=pico"
+    ]
 }

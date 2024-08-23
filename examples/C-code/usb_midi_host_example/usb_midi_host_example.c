@@ -39,9 +39,10 @@
 #include "bsp/board_api.h"
 #include "tusb.h"
 #include "usb_midi_host.h"
-// On-board LED mapping. If no LED, set to NO_LED_GPIO
-const uint NO_LED_GPIO = 255;
-const uint LED_GPIO = 25;
+#ifdef RASPBERRYPI_PICO_W
+// The Board LED is controlled by the CYW43 WiFi/Bluetooth module
+#include "pico/cyw43_arch.h"
+#endif
 
 static uint8_t midi_dev_addr = 0;
 
@@ -51,14 +52,15 @@ static void blink_led(void)
 
     static bool led_state = false;
 
-    // This design has no on-board LED
-    if (NO_LED_GPIO == LED_GPIO)
-        return;
     absolute_time_t now = get_absolute_time();
     
     int64_t diff = absolute_time_diff_us(previous_timestamp, now);
     if (diff > 1000000) {
-        gpio_put(LED_GPIO, led_state);
+#ifdef RASPBERRYPI_PICO_W
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_state);
+#else
+        board_led_write(led_state);
+#endif
         led_state = !led_state;
         previous_timestamp = now;
     }
@@ -109,15 +111,18 @@ static void send_next_note(bool connected)
 int main() {
 
     bi_decl(bi_program_description("A USB MIDI host example."));
-    bi_decl(bi_1pin_with_name(LED_GPIO, "On-board LED"));
 
     board_init();
+
     printf("Pico MIDI Host Example\r\n");
     tusb_init();
-
-    // Map the pins to functions
-    gpio_init(LED_GPIO);
-    gpio_set_dir(LED_GPIO, GPIO_OUT);
+#ifdef RASPBERRYPI_PICO_W
+    // for the LED blink
+    if (cyw43_arch_init()) {
+        printf("WiFi/Bluetooh module init for LED blink failed");
+        return -1;
+    }
+#endif
     while (1) {
         tuh_task();
 

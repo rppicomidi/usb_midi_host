@@ -30,16 +30,12 @@ target_link_libraries(usb_midi_host_pio_example tinyusb_host tinyusb_board usb_m
 
 if(DEFINED PICO_BOARD)
 if(${PICO_BOARD} MATCHES "pico_w")
-message("board is pico_w")
+message("Adding pico_cyw43_arch_none library for pico_w")
 # add additional compile and link options
-target_compile_definitions(usb_midi_host_pio_example PRIVATE RPPICOMIDI_PICO_W=1)
 target_link_libraries(usb_midi_host_pio_example pico_cyw43_arch_none)
-set(RPPICOMIDI_PICO_W 1)
-else()
-message("board is pico")
 endif()
 else()
-message("board is not defined")
+message("PICO_BOARD is not defined")
 endif()
 
 pico_add_extra_outputs(usb_midi_host_pio_example)

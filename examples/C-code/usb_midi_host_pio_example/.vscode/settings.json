@@ -92,5 +92,8 @@
         "thread": "cpp",
         "cinttypes": "cpp",
         "variant": "cpp"
-    }
+    },
+    "cmake.configureArgs": [
+        "-DPICO_BOARD=pico"
+    ]
 }

@@ -388,6 +388,18 @@ cd build
 cmake ..
 make
 ```
+Note: if you are building the `usb_midi_host_pio_example` for
+the Adafruit RP2040 Feather with USB
+Type A Host board, you should replace `cmake ..` with
+```
+-DPICO_BOARD=adafruit_feather_rp2040_usb_host ..
+```
+If you don't do this, then the board will work right after you
+program it, and will not work on reset or reboot. If you are
+using any other board other than a Pico board, change
+`adafruit_feather_rp2040_usb_host` to the name of the
+file for your board (without the `.h` extension)
+found in `${PICO_SDK_PATH}/src/boards/include/boards`.
 
 ### VS Code Build
 To build using VS Code, for Version 2.0 of the `pico-sdk`, import the project to VS Code.
@@ -397,9 +409,18 @@ To build using VS Code, for Version 2.0 of the `pico-sdk`, import the project to
 4. Make sure Pico-SDK version is 2.0.0.
 5. Choose the Debugger and any advanced options
 6. Click Import
-7. Click the CMake icon in the left toolbar.
-8. Select the Delete Cache and Reconfigure Icon
-9. Under the `Configure` option, slect the Pico Kit.
+7. Click the CMake icon in the left toolbar. If you are not using a Pico board
+    1. On the `PROJECT STATUS` line of the CMAKE window, click the `Open CMake Tool Extenstions Settings` gear icon. You have to mouse over
+    the `PROJECT STATUS` line for the icon to appear.
+    2. In the new Settings tab that opened in the editor pane, click the `Workspace` tab.
+    3. Scroll down to the `CMake:Configure Args` item and click the `Add Item` button.
+    4. Enter `-DPICO_BOARD=[your board name goes here]` and click OK. The board name is the file name without
+       extension from `${PICO_SDK_PATH}/src/boards/include/boards`. For example, if you are using a
+       adafruit_feather_rp2040_usb_host board, you would enter `-DPICO_BOARD=adafruit_feather_rp2040_usb_host`
+8. On the `PROJECT STATUS` line of the CMAKE window,
+   select the `Delete Cache and Reconfigure` icon.
+   You have to mouse over the `PROJECT STATUS` line for the icon to appear.
+9. Under the `Configure` option, select the Pico Kit.
 10. Choose whether you want `Debug`, `Release` or `RelWithDebugInfo`. The `MinSizeRel` option can cause issues, so do not choose it.
 11. Click Build
 

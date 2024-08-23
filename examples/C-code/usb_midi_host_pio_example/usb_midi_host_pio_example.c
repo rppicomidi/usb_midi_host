@@ -42,7 +42,7 @@
 #include "pio_usb.h"
 #include "tusb.h"
 #include "usb_midi_host.h"
-#ifdef RPPICOMIDI_PICO_W
+#ifdef RASPBERRYPI_PICO_W
 #include "pico/cyw43_arch.h"
 #endif
 // Because the PIO USB code runs in core 1
@@ -65,7 +65,7 @@ static void blink_led(void)
     if (diff < 0)
         diff = -diff;
     if (diff > 1000) {
-#if RPPICOMIDI_PICO_W
+#ifdef RASPBERRYPI_PICO_W
         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, led_state);
 #else
         board_led_write(led_state);
@@ -119,25 +119,6 @@ static void send_next_note(bool connected)
 
 void core1_main() {
     sleep_ms(10);
-    pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
-    // Use GP16 for USB D+ and GP17 for USB D-
-    pio_cfg.pin_dp = 16;
-    // Change the next line to #if 1 if you are using Pico_PIO_USB
-    // library version 0.5.3 or older on a Pico W board.
-    #if 0
-    // Swap PIOs from default. The RX state machine takes up the
-    // whole PIO program memory. Without these two lines, if you
-    // try to use this code on a Pico W board, the CYW43 SPI PIO
-    // code, which runs on PIO 1, won't fit.
-    // Other potential conflict is the DMA channel tx_ch. However,
-    // the CYW43 SPI driver code is not hard-wired to any particular
-    // DMA channel, so as long as tuh_configure() and tuh_ini()run
-    // after board_init(), which also calls tuh_configure(), and before
-    // cyw43_arch_init(), there should be no conflict.
-    pio_cfg.pio_rx_num = 0;
-    pio_cfg.pio_tx_num = 1;
-    #endif
-    tuh_configure(BOARD_TUH_RHPORT, TUH_CFGID_RPI_PIO_USB_CONFIGURATION, &pio_cfg);
 
     tuh_init(BOARD_TUH_RHPORT);
     core1_booting = false;
@@ -150,7 +131,7 @@ void core1_main() {
 
 int main()
 {
-    board_init();
+    board_init(); // must be called before tuh_init()
     multicore_reset_core1();
     // all USB task run in core1
     multicore_launch_core1(core1_main);
@@ -158,11 +139,13 @@ int main()
     while(core1_booting) {
     }
     printf("Pico MIDI Host Example\r\n");
-#if RPPICOMIDI_PICO_W
+#ifdef RASPBERRYPI_PICO_W
     // The Pico W LED is attached to the CYW43 WiFi/Bluetooth module
     // Need to initialize it so the the LED blink can work
+    // This must be called after tuh_init(). Waiting for core1 to
+    // boot does this.
     if (cyw43_arch_init()) {
-        printf("WiFi init failed");
+        printf("WiFi/Bluetooth module init for board LED failed");
         return -1;
     }
 #endif
