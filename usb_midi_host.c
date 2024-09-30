@@ -234,7 +234,7 @@ bool midih_xfer_cb(uint8_t dev_addr, uint8_t ep_addr, xfer_result_t result, uint
         {
           tu_fifo_write_n(&p_midi_host->rx_ff, buf, 4);
           ++packets_queued;
-          TU_LOG3("MIDI RX=%08x\r\n", packet);
+          TU_LOG3("MIDI RX=%08lx\r\n", packet);
         }
         buf += 4;
       }
