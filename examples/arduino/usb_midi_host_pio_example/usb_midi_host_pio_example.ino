@@ -339,6 +339,3 @@ void tuh_midi_tx_cb(uint8_t dev_addr)
     (void)dev_addr;
 }
 
-void parse_configuration_descriptor_cb(uint8_t drv_id, uint32_t ptr) {
-  Serial.printf("Parsing for driver ID %u of %p\r\n", drv_id, ptr);
-}
