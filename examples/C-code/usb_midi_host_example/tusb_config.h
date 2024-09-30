@@ -49,6 +49,10 @@
 #define CFG_TUSB_OS                 OPT_OS_NONE
 #endif
 
+// TODO Do we need this?
+//#if CFG_TUSB_MCU == OPT_MCU_RP2040
+//#define PICO_RP2040_USB_FAST_IRQ 1
+//#endif
 // CFG_TUSB_DEBUG is defined by compiler in DEBUG build
 // #define CFG_TUSB_DEBUG           0
 
