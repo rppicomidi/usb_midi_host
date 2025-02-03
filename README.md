@@ -129,6 +129,10 @@ If you want to add multiple host drivers, you must implement
 your own `usbh_app_driver_get_cb()` function and you should
 add the `usb_midi_host` library to your main application's
 `CMakeLists.txt` file's `target_link_libraries` instead.
+Note that the functon `usbh_app_driver_get_cb()` returns a
+pointer to the first element of an array of `usbh_class_driver_t` objects.
+For example, if you need the `usb_midi_host` app host driver plus one more, add
+the second app driver to the array the function returns and set `*driver_count=2`.
 
 See the files in `examples/C-code/usb_midi_host_example`
 or `examples/C-code/usb_midi_host_pio_example`
@@ -313,10 +317,31 @@ Both `tuh_midi_packet_write()` and `tuh_midi_stream_write()`
 only write MIDI data to a queue. Once you are done writing
 all MIDI messages that you want to send in a single
 USB Bulk transfer (usually 64 bytes but sometimes only
-8 bytes), you must call `tuh_midi_stream_flush()`.
+8 bytes), you must call `tuh_midi_stream_flush()`. 
 
 The `examples` folder contains both C-Code and Arduino
 code examples of how to use the API.
+
+## Sending long sysex messages or lots of short ones
+The tuh_midi_stream_flush() function causes data to be sent out over
+the USB host port. The RP2040 hardware has to send a complete endpoint
+buffer to the attached device before more data can be sent. Due to the
+TinyUSB HCD driver implementation and limitations of the
+RP2040 chip, the Pico's USB host port is relatively slow. It can take a couple
+of milliseconds for tuh_midi_stream_flush() to complete because the system only
+scans through the pending transfers once per millisecond. If you are sending
+a lot of data, keep in mind that Each MIDI packet is 4 bytes, so most devices
+can handle 16 packets can in one buffer. If you have a long sysex message, take
+the length of a sysex message in bytes, including the starting 0xF0 and 0xF7,
+multiply by 4, divide by 3, and round up. That will tell you how many packets
+you need to send the sysex message.
+
+You can reduce latency by packing the Host's OUT endpoint buffer up to the device's
+OUT endpoint buffer size with data before flushing. Your best bet is to configure
+the usb_midi_host driver to use larger buffers and call tuh_midi_stream_flush()
+only once in your main loop. Yes, you will have latency, but it is fine to break
+up sysex messages across multiple USB packets. The application does not have to flush
+for every write.
 
 ## MIDI Device Strings API
 A USB MIDI device can attach a string descriptor to any or
@@ -397,7 +422,7 @@ Type A Host board, you should replace `cmake ..` with
 If you don't do this, then the board will work right after you
 program it, and will not work on reset or reboot. If you are
 using any other board other than a Pico board, change
-`adafruit_feather_rp2040_usb_host` to the name of theUn
+`adafruit_feather_rp2040_usb_host` to the name of the
 file for your board (without the `.h` extension)
 found in `${PICO_SDK_PATH}/src/boards/include/boards`.
 
