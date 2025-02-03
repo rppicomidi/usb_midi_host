@@ -110,7 +110,11 @@ typedef struct
   CFG_TUSB_MEM_ALIGN uint8_t epin_buf[CFG_TUH_MIDI_EP_BUFSIZE];
 
   bool configured;
-
+  // Track the transfer result in the xfer_cb function
+  // If the result is not XFER_RESULT_SUCCESS, block
+  // midih_flush() and do not restart IN polling.
+  // The user will need to unplug and re-plug the device
+  xfer_result_t last_xfer_result;
 #if CFG_MIDI_HOST_DEVSTRINGS
 #define MAX_STRING_INDICES 32
   uint8_t all_string_indices[MAX_STRING_INDICES];
@@ -213,9 +217,15 @@ bool midih_deinit()
 }
 bool midih_xfer_cb(uint8_t dev_addr, uint8_t ep_addr, xfer_result_t result, uint32_t xferred_bytes)
 {
-  (void)result;
   midih_interface_t *p_midi_host = get_midi_host(dev_addr);
   TU_VERIFY(p_midi_host != NULL);
+  p_midi_host->last_xfer_result = result;
+  if (result == XFER_RESULT_FAILED) {
+    TU_LOG2("MIDIH xfer result failed\r\n");
+    return false;
+  }
+  TU_ASSERT(result == XFER_RESULT_SUCCESS);
+
   if ( ep_addr == p_midi_host->ep_in)
   {
     // receive new data if available
@@ -303,6 +313,7 @@ bool midih_open(uint8_t rhport, uint8_t dev_addr, tusb_desc_interface_t const *d
   midih_interface_t *p_midi_host = get_midi_host(dev_addr);
 
   TU_VERIFY(p_midi_host != NULL);
+  p_midi_host->last_xfer_result = XFER_RESULT_SUCCESS;
 #if CFG_MIDI_HOST_DEVSTRINGS
   p_midi_host->num_string_indices = 0;
 #endif
@@ -575,6 +586,9 @@ static uint32_t write_flush(uint8_t dev_addr, midih_interface_t* midi)
 {
   // No data to send
   if ( !tu_fifo_count(&midi->tx_ff) ) return 0;
+  midih_interface_t *p_midi_host = get_midi_host(dev_addr);
+  TU_VERIFY(p_midi_host != NULL);
+  if (p_midi_host->last_xfer_result != XFER_RESULT_SUCCESS) return 0;
 
   // skip if previous transfer not complete
   TU_VERIFY( usbh_edpt_claim(dev_addr, midi->ep_out) );
