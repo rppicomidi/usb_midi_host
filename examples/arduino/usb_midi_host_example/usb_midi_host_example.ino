@@ -56,7 +56,7 @@ void setup()
   Serial1.println("TinyUSB MIDI Host Example");
 }
 
-static void send_next_note(bool connected)
+static void send_next_note()
 {
     static uint8_t first_note = 0x5b; // Mackie Control rewind
     static uint8_t last_note = 0x5f; // Mackie Control stop
@@ -68,12 +68,6 @@ static void send_next_note(bool connected)
     const uint32_t interval_ms = 1000;
     static uint32_t start_ms = 0;
 
-    // device must be attached and have at least one endpoint ready to receive a message
-    if (!connected || tuh_midih_get_num_tx_cables(midi_dev_addr) < 1)
-        return;
-
-    // transmit any previously queued bytes
-    tuh_midi_stream_flush(midi_dev_addr);
     // New note every interval ms
     if (millis() - start_ms < interval_ms) {
         return; // not enough time
@@ -95,7 +89,6 @@ static void send_next_note(bool connected)
         if (message[4] > last_note)
             message[4] = first_note;
     }
-    tuh_midi_stream_flush(midi_dev_addr);
 }
 
 void loop()
@@ -103,8 +96,12 @@ void loop()
   USBHost.task();
 
   bool connected = midi_dev_addr != 0 && tuh_midi_configured(midi_dev_addr);
-
-  send_next_note(connected);
+  // device must be attached and have at least one endpoint ready to receive a message
+  if (connected && tuh_midih_get_num_tx_cables(midi_dev_addr) >= 1) {
+    send_next_note();
+    // transmit any previously queued bytes (do this once per loop)
+    tuh_midi_stream_flush(midi_dev_addr);
+  }
 }
 
 
