@@ -18,6 +18,7 @@ through a hub.
 - [API](#api)
 - [EXAMPLE PROGRAMS](#example-programs)
 - [TROUBLESHOOTING, CONFIGURATION, and DESIGN DETAILS](#troubleshooting-configuration-and-design-details)
+- [About USB MIDI 1.0](#about-usb-midi-10)
 
 # ACKNOWLEDGEMENTS
 The application driver code is based on code that rppicomidi submitted
@@ -685,3 +686,58 @@ descriptor is too long for the host to read the whole thing.
 The most common failure, though, is the descriptor is too long. See
 [Size of the Enumeration Buffer](#size-of-the-enumeration-buffer) for
 how to address that.
+
+# About USB MIDI 1.0
+The original MIDI specification was designed to carry a MIDI data stream
+over a UART-based serial port at 31.25 kbps. USB MIDI 1.0 is a transport for
+carrying the same MIDI messages between a USB Host and a USB Device. Unlike
+the byte-serial transport of a UART serial port, USB sends data in packets,
+which are groups of bytes. Understanding how this driver encodes a MIDI
+data stream into USB packets will help you properly size data buffers
+and should help you to understand the sizes returned from the driver's
+MIDI stream read and write functions.
+
+You can download the [USB Device Class Specification for MIDI Devices 1.0](https://www.usb.org/sites/default/files/midi10.pdf)
+for free for all of the details. If you are a user of this driver, it will
+probably help you to review the specification, especially section 4.
+Key concepts:
+
+- MIDI data flows between a USB MIDI Host and a USB MIDI Device using Bulk
+endpoints. The path from Host to Device uses Bulk Out endpoints, and the
+path from Device to Host uses Bulk In endponts.
+- On a RP2040 or RP2350, USB MIDI is Full-speed (12Mbps).
+- Full Speed Bulk endpoints are have a maximum payload of 64 bytes but can
+be as small as 8 bytes. Some USB MIDI devices are designed for MIDI 2.0 high
+speed and can support bulk transfers up to 512 bytes per packet,
+but if you connect such a device to this USB 2.0 Full Speed host, then
+data transfers will still be limited to 64 bytes.
+- The serial MIDI byte data stream is encoded into 4-byte packets that move
+on a Bulk endpoint data transfer.
+    - The first byte in the packet is divided into two 4-bit values.
+        - The most significant 4 bits encode a virtual cable number (CN) 0-15.
+        When you plug a USB MIDI device to a computer and it shows multiple
+        "MIDI Ports" for a single device, each "MIDI Port" is a virtual cable.
+        - The least significant 4 bits contain a Code Index Number (CIN) 0-15.
+        The CIN encodes how many of the remaining 3 bytes of the MIDI packet
+        contain a whole MIDI message or just a part of a system exclusive message.
+        For channel messages, the CIN is the same number as the most significant
+        4 bits of the status byte.
+    - The remaining 3 bytes in a packet can contain a 1-byte, 2-byte or
+    3-byte MIDI message, or they can contain data bytes of an ongoing
+    system exclusive message.
+- Since devices support between 8 and 64 bytes per bulk endpoint transfer, 
+USB MIDI devices can handle between 2 and 16 MIDI messages (or sections of
+a system exclusive message) in one Bulk transfer packet.
+
+The host learns the maximum number of bytes per Bulk endpoint transfer,
+the number of virtual cables, the product name string, the string labels
+for each virtual cable, etc. by reading the USB MIDI device's Device
+Descriptor, Configuration Descriptor, and String descriptors during enumeration. The host
+enumerates each device after the device is attached directly or via a hub.
+Descriptors are just data structures that describe device capabilities in
+a standard way. For more details, see the USB MIDI Device spec cited
+above and chapter 9 of [The USB Specification version 2.0](https://www.usb.org/document-library/usb-20-specification).
+
+
+
+
