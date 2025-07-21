@@ -38,6 +38,9 @@
 #ifndef CFG_TUH_MAX_CABLES
   #define CFG_TUH_MAX_CABLES 16
 #endif
+#ifdef TUH_EPSIZE_BULK_MPS
+#define USBH_EPSIZE_BULK_MAX (TUH_EPSIZE_BULK_MPS)
+#endif
 #ifndef CFG_TUH_MIDI_RX_BUFSIZE
   #define CFG_TUH_MIDI_RX_BUFSIZE USBH_EPSIZE_BULK_MAX
 #endif
@@ -47,6 +50,7 @@
 #ifndef CFG_TUH_MIDI_EP_BUFSIZE
   #define CFG_TUH_MIDI_EP_BUFSIZE USBH_EPSIZE_BULK_MAX
 #endif
+
 
 #define MIDI_MAX_DATA_VAL 0x7f
 static struct midih_limits_s {
