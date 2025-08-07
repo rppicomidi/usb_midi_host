@@ -9,7 +9,6 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../../.. usb_midi_host)
 add_executable(usb_midi_host_pio_example
     usb_midi_host_pio_example.c
 )
@@ -23,7 +22,7 @@ target_include_directories(usb_midi_host_pio_example PRIVATE
 
 target_link_options(usb_midi_host_pio_example PRIVATE -Xlinker --print-memory-usage)
 target_compile_options(usb_midi_host_pio_example PRIVATE -Wall -Wextra)
-target_link_libraries(usb_midi_host_pio_example tinyusb_host tinyusb_board usb_midi_host_app_driver
+target_link_libraries(usb_midi_host_pio_example tinyusb_host tinyusb_board
   pico_multicore tinyusb_pico_pio_usb pico_stdlib)
 
 if(DEFINED PICO_BOARD)
