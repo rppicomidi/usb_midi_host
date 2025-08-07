@@ -1,4 +1,19 @@
-# usb_midi_host
+# WARNING: USE OF THE usb_midi_host APPLICATION USB HOST DRIVER IS DEPRECATED FOR C Code
+TinyUSB has implemented a driver that implements the same functionality
+that this driver implements. Rather than maintain an out of tree driver,
+I have decided to stop supporting it. Please pull the latest verions
+of TinyUSB when building MIDI applications. Direct all issues you encounter
+with the USB system to the TinyUSB project.
+
+I have updated the C-Code example programs to show how to use this native driver.
+The source code for the original application USB Host driver is included
+for legacy support. Please note that the native TinyUSB MIDI Host class driver
+has changed the API from the API of the original application USB Host driver.
+To prevent unexpected application behavior, please
+review your applications to make them compatible with the native TinyUSB MIDI
+host class driver's API.
+
+# usb_midi_host (DEPRECATED)
 This README file contains the design notes and limitations of the
 usb_midi_host application driver for TinyUSB. This driver supports
 both C/C++ development and Arduino development.
@@ -33,6 +48,7 @@ API and added the application driver wrapper `usb_midi_host_app_driver.c`.
 The driver C example code code is adapted from TinyUSB pull request #1219. 
 
 # BUILDING APPLICATIONS WITH THIS DRIVER
+THE INFORMATION IN THIS PARAGRAPH IS DEPRECATED
 Although it is possible in the future for the TinyUSB stack to
 incorporate this driver into its builtin driver support, right now
 it is used as an application driver external to the stack. Installing
@@ -40,33 +56,42 @@ the driver to the TinyUSB stack requires adding it to the array
 of application drivers returned by the `usbh_app_driver_get_cb()`
 function.
 
-## Building C/C++ Applications
+The information in the following sections applies for building the example code
+
+## Building C/C++ Applications (STILL APPLIES for Building the examples)
 
 ### Basic Environment Setup
 Before you attempt to build any C/C++ applications, be sure
 you have the toolchain properly installed and the `pico-sdk`
 installed. Please make sure you can build and
 run the blink example found in the [Getting Started Guide](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf).
-Version 2.0 or later of the `pico-sdk` offers the best support
+Version 2.1 or later of the `pico-sdk` offers the best support
 for this project.
 
 ### ${PICO_SDK_PATH}
 If you are following Chapter 3 of the [Getting Started Guide](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf),
 you installed VS Code and the Official Raspberry Pi Pico VS Code extension.
 The VS Code extension installed the `pico-sdk` in the
-`${HOME}/.pico-sdk/sdk/2.0.0` directory. If you followed the manual
+`${HOME}/.pico-sdk/sdk/2.1.0` directory. If you followed the manual
 toolchain installation per Appendix C of the [Getting Started Guide](https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf),
 then you installed the `pico-sdk` in `${HOME}/pico`.
 
 ### TinyUSB Library
-You will also need to make sure that the the TinyUSB library is installed.
+You will also need to make sure that the lastest TinyUSB library is installed.
 If there is nothing in the directory `${PICO_SDK_PATH}/lib/tinyusb`, or
 the directory does not exist, please run the following commands
 ```
-cd ${PICO_SDK_PATH}/pico-sdk
-git submodule update --init
+cd ${PICO_SDK_PATH}
+git submodule update --recursive --init
 ```
-### TinyUSB for Pre-Version 2.0 `pico-sdk`
+
+Once the directory exists, please run the following commands
+```
+cd ${PICO_SDK_PATH}/pico-sdk/lib/tinyusb
+git checkout master
+git pull
+```
+### TinyUSB for Pre-Version 2.0 `pico-sdk` (DEPRECATED)
 You will need a version of the TinyUSB library that supports
 USB Host Application drivers. This feature was introduced to TinyUSB on
 15-Aug-2023 with commit 7537985c080e439f6f97a021ce49f5ef48979c78
@@ -85,11 +110,24 @@ git checkout 525406597627fb9307425539b86dddf10278eca8
 ```
 
 ### `Pico-PIO-USB` Library
+At the time of this writing, version 0.7.2 of the Pico-PIO-USB library is
+not working very will with this code. If you are using PIO USB instead
+of the native RP2040 hardware, I recommend using version 0.7.1 of the
+Pico-PIO-USB library. To install it:
+```
+cd cd ${PICO_SDK_PATH}/lib/tinyusb/hw/mcu/raspberry_pi
+git clone https://github.com/sekigon-gonnoc/Pico-PIO-USB.git
+cd Pico-PIO-USB
+git checkout 0.7.1
+```
+
+THE FOLLOWING INFORMATION IS DEPRECATED
 If you are using the `Pico-PIO-USB` Library to implement the
 USB Host hardware (see the [HARDWARE](#hardware) section, below),
 you need to manually install the `Pico-PIO-USB` Library where
 TinyUSB can find it.
 
+THE FOLLOWING INFORMATION IS DEPRECATED.
 TinyUSB provides python script that TinyUSB to install it, but the script
 in the version of TinyUSB that ships with `pico-sdk` version 2.0
 will install a version of the library that won't build with
@@ -121,6 +159,10 @@ python3 tools/get_deps.py rp2040
 Hopefully, the `pico-sdk` will someday do all of this for you.
 
 ### Building the `usb_midi_host` Library in Your Project
+See the example code for integrating the native USB MIDI Host class driver
+with your code. Do not integrate the usb_midi_host library in your C-code.
+
+THE FOLLOWING INFORMATION IS DEPRECATED
 The `CMakeLists.txt` file contains two `INTERFACE` libraries.
 If this driver is your only application USB host driver external
 to the TinyUSB stack, you should install this driver by
@@ -140,6 +182,13 @@ or `examples/C-code/usb_midi_host_pio_example`
 for examples.
 
 ## Building Arduino Applications
+The latest Adafruit TinyUSB Arduino Library code contains the
+the native USB MIDI Host class driver code. However, the Adafruit
+TinyUSB Arduino Library code does not enable the USB MIDI Host
+support. For now, please continue to use this code for Arduino
+projects. I will refrain from bumping the git tag version so as
+to not confuse Arduino programmers.
+
 Include this library, the Adafruit TinyUSB Arduino Library,
 and, if your host port hardware requires it, the Pico_PIO_USB
 Library using the Arduino IDE Library Manager. If this library
