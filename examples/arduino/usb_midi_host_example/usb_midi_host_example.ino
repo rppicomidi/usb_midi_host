@@ -27,9 +27,6 @@
 
 #define LANGUAGE_ID 0x0409  // English
 
-// Add USB MIDI Host support to Adafruit_TinyUSB
-#include "usb_midi_host.h"
-
 // USB Host object
 Adafruit_USBH_Host USBHost;
 
@@ -37,7 +34,7 @@ Adafruit_USBH_Host USBHost;
 tusb_desc_device_t desc_device;
 
 // holding the device address of the MIDI device
-uint8_t midi_dev_addr = 0;
+uint8_t dev_idx = TUSB_INDEX_INVALID_8;
 
 
 // the setup function runs once when you press reset or power the board
@@ -76,9 +73,9 @@ static void send_next_note()
 
     uint32_t nwritten = 0;
     // Transmit the note message on the highest cable number
-    uint8_t cable = tuh_midih_get_num_tx_cables(midi_dev_addr) - 1;
+    uint8_t cable = tuh_midi_get_tx_cable_count(dev_idx) - 1;
     nwritten = 0;
-    nwritten += tuh_midi_stream_write(midi_dev_addr, cable, message, sizeof(message));
+    nwritten += tuh_midi_stream_write(dev_idx, cable, message, sizeof(message));
  
     if (nwritten != 0)
     {
@@ -95,12 +92,12 @@ void loop()
 {
   USBHost.task();
 
-  bool connected = midi_dev_addr != 0 && tuh_midi_configured(midi_dev_addr);
+  bool connected = dev_idx != TUSB_INDEX_INVALID_8 && tuh_midi_mounted(dev_idx);
   // device must be attached and have at least one endpoint ready to receive a message
-  if (connected && tuh_midih_get_num_tx_cables(midi_dev_addr) >= 1) {
+  if (connected && tuh_midi_get_tx_cable_count(dev_idx) >= 1) {
     send_next_note();
     // transmit any previously queued bytes (do this once per loop)
-    tuh_midi_stream_flush(midi_dev_addr);
+    tuh_midi_write_flush(dev_idx);
   }
 }
 
@@ -221,14 +218,14 @@ static void print_utf16(uint16_t *temp_buf, size_t buf_len) {
 // can be used to parse common/simple enough descriptor.
 // Note: if report descriptor length > CFG_TUH_ENUMERATION_BUFSIZE, it will be skipped
 // therefore report_desc = NULL, desc_len = 0
-void tuh_midi_mount_cb(uint8_t dev_addr, uint8_t in_ep, uint8_t out_ep, uint8_t num_cables_rx, uint16_t num_cables_tx)
+void tuh_midi_mount_cb(uint8_t idx, const tuh_midi_mount_cb_t* mount_cb_data)
 {
-  Serial1.printf("MIDI device address = %u, IN endpoint %u has %u cables, OUT endpoint %u has %u cables\r\n",
-      dev_addr, in_ep & 0xf, num_cables_rx, out_ep & 0xf, num_cables_tx);
+  Serial1.printf("MIDI Device Index = %u, MIDI device address = %u, %u IN cables, %u OUT cables\r\n", idx,
+      mount_cb_data->daddr, mount_cb_data->rx_cable_count, mount_cb_data->tx_cable_count);
 
-  if (midi_dev_addr == 0) {
+  if (dev_idx == TUSB_INDEX_INVALID_8) {
     // then no MIDI device is currently connected
-    midi_dev_addr = dev_addr;
+    dev_idx = idx;
   }
   else {
     Serial1.printf("A different USB MIDI Device is already connected.\r\nOnly one device at a time is supported in this program\r\nDevice is disabled\r\n");
@@ -236,30 +233,30 @@ void tuh_midi_mount_cb(uint8_t dev_addr, uint8_t in_ep, uint8_t out_ep, uint8_t 
 }
 
 // Invoked when device with hid interface is un-mounted
-void tuh_midi_umount_cb(uint8_t dev_addr, uint8_t instance)
+void tuh_midi_umount_cb(uint8_t idx)
 {
-  if (dev_addr == midi_dev_addr) {
-    midi_dev_addr = 0;
-    Serial1.printf("MIDI device address = %d, instance = %d is unmounted\r\n", dev_addr, instance);
+  if (idx == dev_idx) {
+    dev_idx = TUSB_INDEX_INVALID_8;
+    Serial1.printf("MIDI Device Index = %u is unmounted\r\n", idx);
   }
   else {
-    Serial1.printf("Unused MIDI device address = %d, instance = %d is unmounted\r\n", dev_addr, instance);
+    Serial1.printf("Unused MIDI Device Index  %u is unmounted\r\n", idx);
   }
 }
 
-void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets)
+void tuh_midi_rx_cb(uint8_t idx, uint32_t num_packets)
 {
-  if (midi_dev_addr == dev_addr) {
+  if (dev_idx == idx) {
     if (num_packets != 0) {
       uint8_t cable_num;
       uint8_t buffer[48];
       while (1) {
-        uint32_t bytes_read = tuh_midi_stream_read(dev_addr, &cable_num, buffer, sizeof(buffer));
+        uint32_t bytes_read = tuh_midi_stream_read(dev_idx, &cable_num, buffer, sizeof(buffer));
         if (bytes_read == 0)
           return;
         Serial1.printf("MIDI RX Cable #%u:", cable_num);
-        for (uint32_t idx = 0; idx < bytes_read; idx++) {
-          Serial1.printf("%02x ", buffer[idx]);
+        for (uint32_t jdx = 0; jdx < bytes_read; jdx++) {
+          Serial1.printf("%02x ", buffer[jdx]);
         }
         Serial1.printf("\r\n");
       }
@@ -267,8 +264,8 @@ void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets)
   }
 }
 
-void tuh_midi_tx_cb(uint8_t dev_addr)
+void tuh_midi_tx_cb(uint8_t idx, uint32_t num_bytes)
 {
-    (void)dev_addr;
+    (void)idx;
+    (void)num_bytes;
 }
-

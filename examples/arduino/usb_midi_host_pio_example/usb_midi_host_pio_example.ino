@@ -16,6 +16,7 @@
  All text above, and the splash screen below must be included in
  any redistribution
 *********************************************************************/
+
 #ifdef __OPTIMIZE_SIZE__
 #error "Please use the Tools->Optimize: Menu to choose any Optimize setting other than -Os"
 #endif
@@ -50,9 +51,6 @@
 
 #define LANGUAGE_ID 0x0409  // English
 
-// Add USB MIDI Host support to Adafruit_TinyUSB
-#include "usb_midi_host.h"
-
 // USB Host object
 Adafruit_USBH_Host USBHost;
 
@@ -60,18 +58,45 @@ Adafruit_USBH_Host USBHost;
 tusb_desc_device_t desc_device;
 
 // holding the device address of the MIDI device
-uint8_t midi_dev_addr = 0;
+uint8_t dev_idx = TUSB_INDEX_INVALID_8;
 
 
 // the setup function runs once when you press reset or power the board
 void setup()
 {
-  Serial.begin(115200);
+  Serial.begin(115200); // All console prints go to UART0
   while (!Serial) {
-    delay(100);   // wait for native usb
+    delay(100);   // wait for serial port to initialize
+  }
+  // Optionally, configure the buffer sizes here
+  // The commented out code shows the default values
+  // tuh_midih_define_limits(64, 64, 16);
+  uint32_t cpu_hz = clock_get_hz(clk_sys);
+  if ( cpu_hz != 120000000UL && cpu_hz != 240000000UL ) {
+    delay(2000);   // wait for native usb
+    Serial.printf("Error: CPU Clock = %u, PIO USB require CPU clock must be multiple of 120 Mhz\r\n", cpu_hz);
+    Serial.printf("Change your CPU Clock to either 120 or 240 Mhz in Menu->CPU Speed \r\n", cpu_hz);
+    while(1) delay(1);
   }
 
-  Serial.printf("TinyUSB MIDI Host Example\r\n");
+  pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
+  pio_cfg.pin_dp = PIN_USB_HOST_DP;
+ 
+  USBHost.configure_pio_usb(1, &pio_cfg);
+#ifdef PIN_5V_EN
+  pinMode(PIN_5V_EN, OUTPUT);
+  digitalWrite(PIN_5V_EN, PIN_5V_EN_STATE);
+#endif
+  // Optionally, configure the buffer sizes here
+  // The commented out code shows the default values
+  // tuh_midih_define_limits(64, 64, 16);
+
+  // run host stack on controller (rhport) 1
+  // Note: For rp2040 pico-pio-usb, calling USBHost.begin() on core1 will have most of the
+  // host bit-banging processing works done in core1 to free up core0 for other works
+  USBHost.begin(1);
+
+  Serial.println("TinyUSB MIDI Host Example");
 }
 
 static void send_next_note()
@@ -94,9 +119,9 @@ static void send_next_note()
 
     uint32_t nwritten = 0;
     // Transmit the note message on the highest cable number
-    uint8_t cable = tuh_midih_get_num_tx_cables(midi_dev_addr) - 1;
+    uint8_t cable = tuh_midi_get_tx_cable_count(dev_idx) - 1;
     nwritten = 0;
-    nwritten += tuh_midi_stream_write(midi_dev_addr, cable, message, sizeof(message));
+    nwritten += tuh_midi_stream_write(dev_idx, cable, message, sizeof(message));
  
     if (nwritten != 0)
     {
@@ -111,63 +136,17 @@ static void send_next_note()
 
 void loop()
 {
-  bool connected = midi_dev_addr != 0 && tuh_midi_configured(midi_dev_addr);
+  USBHost.task();
+
+  bool connected = dev_idx != TUSB_INDEX_INVALID_8 && tuh_midi_mounted(dev_idx);
   // device must be attached and have at least one endpoint ready to receive a message
-  if (connected && tuh_midih_get_num_tx_cables(midi_dev_addr) >= 1) {
+  if (connected && tuh_midi_get_tx_cable_count(dev_idx) >= 1) {
     send_next_note();
     // transmit any previously queued bytes (do this once per loop)
-    tuh_midi_stream_flush(midi_dev_addr);
+    tuh_midi_write_flush(dev_idx);
   }
 }
 
-// core1's setup
-void setup1() {
-  while (!Serial) {
-    delay(100);   // wait for native usb
-  }
-  Serial.printf("Core1 setup to run TinyUSB host with pio-usb\r\n");
-
-  // Check for CPU frequency, must be multiple of 120Mhz for bit-banging USB
-  uint32_t cpu_hz = clock_get_hz(clk_sys);
-  if ( cpu_hz != 120000000UL && cpu_hz != 240000000UL ) {
-    delay(2000);   // wait for native usb
-    Serial.printf("Error: CPU Clock = %u, PIO USB require CPU clock must be multiple of 120 Mhz\r\n", cpu_hz);
-    Serial.printf("Change your CPU Clock to either 120 or 240 Mhz in Menu->CPU Speed \r\n", cpu_hz);
-    while(1) delay(1);
-  }
-
-  pio_usb_configuration_t pio_cfg = PIO_USB_DEFAULT_CONFIG;
-  pio_cfg.pin_dp = PIN_USB_HOST_DP;
- 
- // Change the next line to #if 1 if the Pico-PIO-USB library version is 0.5.3 or older.
- #if 0
- #if defined(ARDUINO_RASPBERRY_PI_PICO_W)
-  /* Need to swap PIOs so PIO code from CYW43 PIO SPI driver will fit */
-  pio_cfg.pio_rx_num = 0;
-  pio_cfg.pio_tx_num = 1;
- #endif /* ARDUINO_RASPBERRY_PI_PICO_W */
- #endif
- 
-  USBHost.configure_pio_usb(1, &pio_cfg);
-#ifdef PIN_5V_EN
-  pinMode(PIN_5V_EN, OUTPUT);
-  digitalWrite(PIN_5V_EN, PIN_5V_EN_STATE);
-#endif
-  // Optionally, configure the buffer sizes here
-  // The commented out code shows the default values
-  // tuh_midih_define_limits(64, 64, 16);
-
-  // run host stack on controller (rhport) 1
-  // Note: For rp2040 pico-pio-usb, calling USBHost.begin() on core1 will have most of the
-  // host bit-banging processing works done in core1 to free up core0 for other works
-  USBHost.begin(1);
-}
-
-// core1's loop
-void loop1()
-{
-  USBHost.task();
-}
 
 //--------------------------------------------------------------------+
 // TinyUSB Host callbacks
@@ -285,14 +264,14 @@ static void print_utf16(uint16_t *temp_buf, size_t buf_len) {
 // can be used to parse common/simple enough descriptor.
 // Note: if report descriptor length > CFG_TUH_ENUMERATION_BUFSIZE, it will be skipped
 // therefore report_desc = NULL, desc_len = 0
-void tuh_midi_mount_cb(uint8_t dev_addr, uint8_t in_ep, uint8_t out_ep, uint8_t num_cables_rx, uint16_t num_cables_tx)
+void tuh_midi_mount_cb(uint8_t idx, const tuh_midi_mount_cb_t* mount_cb_data)
 {
-  Serial.printf("MIDI device address = %u, IN endpoint %u has %u cables, OUT endpoint %u has %u cables\r\n",
-      dev_addr, in_ep & 0xf, num_cables_rx, out_ep & 0xf, num_cables_tx);
+  Serial.printf("MIDI Device Index = %u, MIDI device address = %u, %u IN cables, %u OUT cables\r\n", idx,
+      mount_cb_data->daddr, mount_cb_data->rx_cable_count, mount_cb_data->tx_cable_count);
 
-  if (midi_dev_addr == 0) {
+  if (dev_idx == TUSB_INDEX_INVALID_8) {
     // then no MIDI device is currently connected
-    midi_dev_addr = dev_addr;
+    dev_idx = idx;
   }
   else {
     Serial.printf("A different USB MIDI Device is already connected.\r\nOnly one device at a time is supported in this program\r\nDevice is disabled\r\n");
@@ -300,30 +279,30 @@ void tuh_midi_mount_cb(uint8_t dev_addr, uint8_t in_ep, uint8_t out_ep, uint8_t 
 }
 
 // Invoked when device with hid interface is un-mounted
-void tuh_midi_umount_cb(uint8_t dev_addr, uint8_t instance)
+void tuh_midi_umount_cb(uint8_t idx)
 {
-  if (dev_addr == midi_dev_addr) {
-    midi_dev_addr = 0;
-    Serial.printf("MIDI device address = %d, instance = %d is unmounted\r\n", dev_addr, instance);
+  if (idx == dev_idx) {
+    dev_idx = TUSB_INDEX_INVALID_8;
+    Serial.printf("MIDI Device Index = %u is unmounted\r\n", idx);
   }
   else {
-    Serial.printf("Unused MIDI device address = %d, instance = %d is unmounted\r\n", dev_addr, instance);
+    Serial.printf("Unused MIDI Device Index  %u is unmounted\r\n", idx);
   }
 }
 
-void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets)
+void tuh_midi_rx_cb(uint8_t idx, uint32_t num_packets)
 {
-  if (midi_dev_addr == dev_addr) {
+  if (dev_idx == idx) {
     if (num_packets != 0) {
       uint8_t cable_num;
       uint8_t buffer[48];
       while (1) {
-        uint32_t bytes_read = tuh_midi_stream_read(dev_addr, &cable_num, buffer, sizeof(buffer));
+        uint32_t bytes_read = tuh_midi_stream_read(dev_idx, &cable_num, buffer, sizeof(buffer));
         if (bytes_read == 0)
           return;
         Serial.printf("MIDI RX Cable #%u:", cable_num);
-        for (uint32_t idx = 0; idx < bytes_read; idx++) {
-          Serial.printf("%02x ", buffer[idx]);
+        for (uint32_t jdx = 0; jdx < bytes_read; jdx++) {
+          Serial.printf("%02x ", buffer[jdx]);
         }
         Serial.printf("\r\n");
       }
@@ -331,8 +310,8 @@ void tuh_midi_rx_cb(uint8_t dev_addr, uint32_t num_packets)
   }
 }
 
-void tuh_midi_tx_cb(uint8_t dev_addr)
+void tuh_midi_tx_cb(uint8_t idx, uint32_t num_bytes)
 {
-    (void)dev_addr;
+    (void)idx;
+    (void)num_bytes;
 }
-
