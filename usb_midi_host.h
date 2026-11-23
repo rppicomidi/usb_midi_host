@@ -28,7 +28,9 @@
 
 #include "class/audio/audio.h"
 #include "class/midi/midi.h"
+#ifndef RPPICOMIDI_FORCE_USB_MIDI_HOST
 #warning "This driver is deprecated. Please use the built-in TinyUSB MIDI Host class driver instead."
+#endif
 #ifdef __cplusplus
  extern "C" {
 #endif
